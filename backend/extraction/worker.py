@@ -1,6 +1,10 @@
 # 얼굴 추출 워커: photos 대기열에서 사진을 잡아 얼굴을 분석하고 faces에 저장하는 일을 반복 (처리 2)
 # 한 장 처리 = [트랜잭션] 잡기 → [밖] NAS에서 읽기·분석 → [트랜잭션] 저장 (오래 걸리는 분석 중에 DB를 붙잡지 않음)
+import argparse
 import logging
+import os
+import signal
+import socket
 import time
 from contextlib import AbstractContextManager
 from collections.abc import Callable
@@ -78,7 +82,9 @@ class ExtractionWorker:
         try:
             with self.session_scope() as database_session:
                 is_completed = complete_photo(database_session, photo_id, self.worker_id, detected_faces)
-            if not is_completed:
+            if is_completed:
+                logger.info("완료: photo_id=%s, 얼굴 %d개", photo_id, len(detected_faces))
+            else:
                 logger.warning("처리 중 다른 워커에게 넘어간 사진이라 결과를 버림: photo_id=%s", photo_id)
         except OperationalError:
             # 일시 오류(DB 끊김 등): 다시 대기열로 돌려서 나중에 아무 워커나 처리
@@ -123,3 +129,58 @@ class ExtractionWorker:
                 break
             time.sleep(self.idle_seconds)
         return processed_count
+
+
+def build_worker_id() -> str:
+    # 어느 서버의 어느 프로세스가 잡았는지 구분 (photos.worker_id는 VARCHAR(50))
+    return f"{socket.gethostname()}-{os.getpid()}"[:50]
+
+
+def install_stop_signal_handlers(worker: ExtractionWorker) -> None:
+    # SIGTERM: Auto Scaling이 서버를 줄일 때 보내는 종료 신호, SIGINT: 터미널에서 Ctrl+C
+    # 첫 신호는 "지금 사진만 끝내고 멈춤", 한 번 더 오면 바로 강제 종료
+    def handle_stop_signal(signal_number, frame):
+        if worker.is_stop_requested:
+            raise KeyboardInterrupt
+        logger.info("종료 신호(%s) 받음: 지금 사진만 끝내고 멈춤 (한 번 더 누르면 강제 종료)", signal.Signals(signal_number).name)
+        worker.request_stop()
+
+    signal.signal(signal.SIGINT, handle_stop_signal)
+    signal.signal(signal.SIGTERM, handle_stop_signal)
+
+
+def main() -> None:
+    # 실행: backend/에서 uv run python -m extraction.worker [--stop-when-queue-empty]
+    argument_parser = argparse.ArgumentParser(description="얼굴 추출 워커")
+    argument_parser.add_argument(
+        "--stop-when-queue-empty",
+        action="store_true",
+        help="대기열이 비면 종료 (실험·부하 테스트용). 없으면 멈춤 신호가 올 때까지 계속 대기하며 처리",
+    )
+    arguments = argument_parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(process)d] %(levelname)s %(message)s")
+
+    # 무거운 import·모델 로드는 실행할 때만 (테스트에서 worker 모듈을 import할 때는 하지 않음)
+    from core.configuration import get_settings
+    from extraction.face_analyzer import FaceAnalyzer
+
+    model_load_start = time.perf_counter()
+    face_analyzer = FaceAnalyzer()   # 프로세스당 한 번만 로드해서 모든 사진에 재사용
+    logger.info("모델 로드 %.1f초", time.perf_counter() - model_load_start)
+
+    worker = ExtractionWorker(
+        face_analyzer=face_analyzer,
+        worker_id=build_worker_id(),
+        nas_root_path=get_settings().nas_root_path,
+    )
+    install_stop_signal_handlers(worker)
+
+    logger.info("워커 시작: worker_id=%s", worker.worker_id)
+    run_start = time.perf_counter()
+    processed_count = worker.run(stop_when_queue_empty=arguments.stop_when_queue_empty)
+    logger.info("워커 종료: worker_id=%s, 처리 %d장, %.1f초", worker.worker_id, processed_count, time.perf_counter() - run_start)
+
+
+if __name__ == "__main__":
+    main()
