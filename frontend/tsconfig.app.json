@@ -16,7 +16,13 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path alias (shadcn/ui도 이 설정을 읽음) */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
