@@ -19,12 +19,15 @@ npm run dev
 
 ## 환경 변수
 
-`.env.example` 참고. 내 컴퓨터 전용 설정은 `.env.development.local`에 적습니다(저장소 제외).
+아무것도 설정하지 않으면 `npm run dev`는 가짜 API(MSW)로 동작합니다. 팀 규칙상 저장소에는 `.env.example`만 올리고,
+실제 백엔드에 붙일 때는 `.env.example`을 `.env.development.local`로 복사해서 씁니다(저장소 제외).
 
-| 이름                | 설명                                                  |
-| ------------------- | ----------------------------------------------------- |
-| `VITE_API_BASE_URL` | API 기본 주소. 비워두면 같은 주소의 `/api/...`로 요청 |
-| `VITE_USE_MOCK`     | `true`면 MSW 가짜 API 사용                            |
+| 이름                | 설명                                                                                |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | 백엔드 주소. 로컬 백엔드는 `http://localhost:8000`, 비워두면 같은 주소의 `/api/...` |
+| `VITE_USE_MOCK`     | `true`면 가짜 API, `false`면 실제 백엔드. 비워두면 개발 서버에서만 가짜 API         |
+
+기본값은 `src/shared/config/environment.ts`에 있습니다.
 
 ## 문서
 
