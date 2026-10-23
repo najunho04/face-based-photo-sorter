@@ -1,26 +1,23 @@
-import { lazy, Suspense } from 'react'
-import { environment } from '@/shared/config/environment'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { RouterProvider } from 'react-router/dom'
+import { router } from '@/app/router'
+import { connectUnauthorizedRedirect } from '@/app/unauthorized-redirect'
+import { createQueryClient } from '@/shared/api/query-client'
+import { Toaster } from '@/shared/ui/sonner'
 
-// 컴포넌트 모음은 개발 서버에서만 불러온다. 빌드에서는 import.meta.env.DEV가 false라 코드가 빠진다
-const UiGalleryPage = import.meta.env.DEV ? lazy(() => import('@/pages/dev/ui-gallery-page')) : null
+// 앱 전체에서 하나만 쓰는 서버 데이터 캐시
+const queryClient = createQueryClient()
 
-// 자리 표시 화면. 3단계에서 라우터로 바뀐다.
+// 앱의 맨 바깥: 서버 데이터 캐시, 화면 주소표, 알림 표시 자리를 연결한다
 export default function App() {
-  // 라우터가 생기기 전까지 /dev/ui 주소만 직접 확인해 컴포넌트 모음을 보여 준다
-  if (UiGalleryPage && window.location.pathname === '/dev/ui') {
-    return (
-      <Suspense fallback={null}>
-        <UiGalleryPage />
-      </Suspense>
-    )
-  }
+  // API가 401을 받으면 참가자는 ⑧, 관리자는 A1로 보내도록 연결한다
+  useEffect(() => connectUnauthorizedRedirect({ router, queryClient }), [])
 
   return (
-    <main className="mx-auto flex max-w-content flex-col gap-2 p-6">
-      <h1 className="text-title-1 text-primary">인생내컷</h1>
-      <p className="text-body text-muted-foreground">
-        프론트엔드 준비 중 · 가짜 API {environment.useMock ? '사용' : '사용 안 함'}
-      </p>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+      <Toaster />
+    </QueryClientProvider>
   )
 }
