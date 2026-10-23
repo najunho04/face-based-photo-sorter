@@ -140,16 +140,16 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 
 ## 7. 단계별 작업
 
-### 0단계. 프로젝트 준비
-- [ ] `frontend/`에 Vite + React + TypeScript 프로젝트 생성
-- [ ] 폴더 구조(4장) 만들기
-- [ ] ESLint + Prettier 설정, 저장 시 포맷
-- [ ] `@/` 경로 별칭 (tsconfig + vite)
-- [ ] TypeScript `strict`
-- [ ] 환경 변수: `.env.development` (`VITE_API_BASE_URL`, `VITE_USE_MOCK=true`), `.env.example`
-- [ ] git 초기화, `.gitignore`(node_modules, dist, .env.local, tools/)
+### 0단계. 프로젝트 준비 ✅ (2026-10-23 완료)
+- [x] `frontend/`에 Vite + React + TypeScript 프로젝트 생성 (create-vite 9.3: Vite 8, React 19.3, TypeScript 6)
+- [x] 폴더 구조(4장) 만들기
+- [x] 린트(oxlint, 템플릿 기본) + Prettier 설정. 저장 시 포맷은 VS Code 추천 확장으로 안내
+- [x] `@/` 경로 별칭 (tsconfig + vite)
+- [x] TypeScript `strict`
+- [x] 환경 변수: `.env.development` (`VITE_API_BASE_URL`, `VITE_USE_MOCK=true`), `.env.production`, `.env.example`
+- [x] git 초기화(작업 폴더 = 팀 저장소, `frontend` 브랜치), `frontend/`만 추적
 
-**끝났을 때 확인할 것:** `npm run dev`로 빈 화면이 뜨고, `npm run lint`·`npm run build`가 통과한다.
+**끝났을 때 확인할 것:** `npm run dev`로 빈 화면이 뜨고, `npm run lint`·`npm run build`가 통과한다. → 확인 완료
 
 ### 1단계. 디자인 시스템
 - [ ] Tailwind v4 설치, `tokens.css` 적용
@@ -260,3 +260,9 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 | 날짜 | 단계 | 결정 |
 |---|---|---|
 | 2026-10-23 | 계획 | 이 문서 작성. 0~8단계는 가짜 API로 진행, 9단계는 백엔드 준비 후 |
+| 2026-10-23 | 0 | 팀 저장소 `najunho04/face-based-photo-sorter`에 `frontend/` 폴더만 추가. 작업 폴더를 저장소로 쓰고, 루트의 다른 파일은 `.git/info/exclude`로 제외(팀 저장소 루트에 파일을 남기지 않기 위해) |
+| 2026-10-23 | 0 | `main`은 건드리지 않고 `frontend` 브랜치에서 작업. `main`이 아직 없어 독립 브랜치로 시작 |
+| 2026-10-23 | 0 | 단계·작은 작업마다 커밋, push는 요청 시에만 |
+| 2026-10-23 | 0 | 문서(`docs/`)와 디자인 명세서를 `frontend/docs/`로 이동 |
+| 2026-10-23 | 0 | 린트는 create-vite 9 기본인 oxlint 사용(ESLint 대신). Prettier 스타일은 템플릿에 맞춰 세미콜론 없음·작은따옴표 |
+| 2026-10-23 | 0 | 줄바꿈 LF 통일(`.gitattributes`) |
