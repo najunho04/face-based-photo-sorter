@@ -11,6 +11,15 @@ type ButtonProps = React.ComponentProps<'button'> &
     loading?: boolean
   }
 
+// 로딩 중에도 클릭은 막지만(disabled) 비활성 회색 대신 원래 색을 유지한다 (명세서 8.2: 로딩은 글자 유지)
+const loadingColorClassNames = {
+  default: 'disabled:bg-primary disabled:text-primary-foreground',
+  secondary: 'disabled:bg-secondary disabled:text-secondary-foreground',
+  ghost: 'disabled:text-muted-foreground',
+  destructive: 'disabled:bg-destructive disabled:text-destructive-foreground',
+  link: 'disabled:text-primary',
+} as const
+
 function Button({
   className,
   variant = 'default',
@@ -28,7 +37,11 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(
+        buttonVariants({ variant, size }),
+        loading && variant && loadingColorClassNames[variant],
+        className,
+      )}
       disabled={asChild ? undefined : disabled || loading}
       aria-busy={loading || undefined}
       {...props}
