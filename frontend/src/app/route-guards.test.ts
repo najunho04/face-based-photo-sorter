@@ -58,6 +58,24 @@ describe('requireParticipantSession', () => {
     expect(location).toBe('/e/A7K2Q9?next=%2Fe%2FA7K2Q9%2Fall')
   })
 
+  it('주소의 코드가 소문자여도 같은 행사로 본다', () => {
+    saveOpenEventSession('A7K2Q9')
+
+    const location = catchRedirectLocation(() =>
+      requireParticipantSession(loaderArguments('/e/a7k2q9/all', { code: 'a7k2q9' })),
+    )
+
+    expect(location).toBeNull()
+  })
+
+  it('입장 정보 없이 소문자 코드로 오면 대문자 코드로 자동 입장한다', () => {
+    const location = catchRedirectLocation(() =>
+      requireParticipantSession(loaderArguments('/e/a7k2q9/all', { code: 'a7k2q9' })),
+    )
+
+    expect(location).toBe('/e/A7K2Q9?next=%2Fe%2Fa7k2q9%2Fall')
+  })
+
   it('같은 행사에 입장해 있으면 통과한다', () => {
     saveOpenEventSession('A7K2Q9')
 

@@ -47,12 +47,12 @@ const participantRoutes: RouteObject[] = [
         loader: requireParticipantSession,
         children: [
           { path: 'preparing', Component: PreparingPage, handle: titled('사진 정리 중') },
-          { path: 'all', Component: AllPhotosPage, handle: titled('전체 사진') },
           {
             // 이 아래 화면은 행사가 공개(open)돼 있어야 한다
             loader: requireOpenEvent,
             children: [
               { path: 'home', Component: HomePage, handle: titled('사람별 사진') },
+              { path: 'all', Component: AllPhotosPage, handle: titled('전체 사진') },
               {
                 path: 'camera',
                 lazy: lazyPage(() => import('@/pages/participant/camera-page')),

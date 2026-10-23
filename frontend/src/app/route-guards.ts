@@ -1,4 +1,5 @@
 import { redirect, type LoaderFunctionArgs } from 'react-router'
+import { normalizeAccessCode } from '@/entities/session/access-code'
 import { paths } from '@/shared/config/paths'
 import {
   readAdministratorSession,
@@ -21,7 +22,8 @@ export function requireParticipantSession({
   request,
   params,
 }: LoaderFunctionArgs): ParticipantSession {
-  const accessCode = params.code ?? ''
+  // 주소의 코드가 소문자로 들어와도 저장된 세션(대문자)과 같은 값으로 비교한다
+  const accessCode = normalizeAccessCode(params.code ?? '')
   const session = readParticipantSession()
   if (!session || session.accessCode !== accessCode) {
     throw redirect(paths.eventJoin(accessCode, getPathWithSearch(request)))
