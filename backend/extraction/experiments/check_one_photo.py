@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import cv2
-import numpy as np
+import numpy
 from insightface.app import FaceAnalysis
 
 # backend/ 기준 경로 (이 파일은 backend/extraction/experiments/에 있음)
@@ -14,16 +14,16 @@ RESULT_DIRECTORY = DATASET_DIRECTORY / "results"   # datasets/ 아래라 git에�
 PHOTO_FILE_NAME = "100_1817.JPG"   # 정답 기준 3명(3, 10, 11번)이 있는 사진
 
 
-def read_image(path: Path) -> np.ndarray:
+def read_image(path: Path) -> numpy.ndarray:
     # cv2.imread는 Windows 한글 경로를 못 읽어서, 바이트로 읽은 뒤 디코딩
-    image_bytes = np.fromfile(path, dtype=np.uint8)
+    image_bytes = numpy.fromfile(path, dtype=numpy.uint8)
     image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError(f"이미지를 읽을 수 없음: {path}")
     return image
 
 
-def write_image(path: Path, image: np.ndarray) -> None:
+def write_image(path: Path, image: numpy.ndarray) -> None:
     # cv2.imwrite도 한글 경로 문제가 있어서, 인코딩한 바이트를 직접 파일로 씀
     path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imencode(".jpg", image)[1].tofile(path)
