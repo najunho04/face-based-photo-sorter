@@ -77,18 +77,25 @@ def filter_good_quality_faces(
 
 
 def read_image(path: str | Path) -> numpy.ndarray:
-    # cv2.imread는 Windows 한글 경로를 못 읽어서, 파이썬으로 바이트를 읽은 뒤 OpenCV로 디코딩
-    # IMREAD_COLOR는 EXIF 회전 정보를 반영해서, 휴대폰 세로 사진도 화면에 보이는 방향 그대로 읽힘
+    # 워커용: NAS 파일을 파이썬으로 바이트로 읽은 뒤 디코딩 (cv2.imread는 Windows 한글 경로를 못 읽음)
     try:
-        image_bytes = numpy.fromfile(path, dtype=numpy.uint8)
+        image_bytes = Path(path).read_bytes()
     except OSError as error:   # 파일 없음(FileNotFoundError)·권한 없음 등
         raise ImageReadError(f"사진 파일을 열 수 없음: {path}") from error
-    if image_bytes.size == 0:  # 빈 파일은 imdecode가 예외를 내므로 먼저 걸러냄
-        raise ImageReadError(f"빈 파일: {path}")
+    try:
+        return read_image_from_bytes(image_bytes)
+    except ImageReadError as error:
+        raise ImageReadError(f"{error}: {path}") from error
 
-    image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
-    if image is None:          # 이미지 형식이 아니거나 깨진 파일
-        raise ImageReadError(f"이미지로 읽을 수 없는 파일: {path}")
+
+def read_image_from_bytes(image_bytes: bytes) -> numpy.ndarray:
+    # 셀카용: 업로드 받은 바이트를 파일로 저장하지 않고 바로 디코딩 (셀카는 매칭 직후 버림)
+    # IMREAD_COLOR는 EXIF 회전 정보를 반영해서, 휴대폰 세로 사진도 화면에 보이는 방향 그대로 읽힘
+    if len(image_bytes) == 0:   # 빈 데이터는 imdecode가 예외를 내므로 먼저 걸러냄
+        raise ImageReadError("빈 파일")
+    image = cv2.imdecode(numpy.frombuffer(image_bytes, dtype=numpy.uint8), cv2.IMREAD_COLOR)
+    if image is None:           # 이미지 형식이 아니거나 깨진 데이터
+        raise ImageReadError("이미지로 읽을 수 없는 데이터")
     return image
 
 

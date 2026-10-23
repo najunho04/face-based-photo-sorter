@@ -14,6 +14,7 @@ from extraction.face_analyzer import (
     convert_detected_face,
     filter_good_quality_faces,
     read_image,
+    read_image_from_bytes,
     resize_for_analysis,
 )
 
@@ -238,3 +239,24 @@ def test_analyzer_returns_empty_list_when_no_face_found():
     detected_faces = face_analyzer.analyze(numpy.zeros((500, 500, 3), dtype=numpy.uint8))
 
     assert detected_faces == []
+
+
+# --- 바이트에서 읽기: 셀카처럼 파일로 저장하지 않고 업로드 받은 바이트를 바로 분석할 때 (matching이 사용) ---
+
+def test_read_image_from_bytes_decodes_uploaded_image():
+    original_image = numpy.full((30, 40, 3), 200, dtype=numpy.uint8)
+    image_bytes = cv2.imencode(".png", original_image)[1].tobytes()
+
+    image = read_image_from_bytes(image_bytes)
+
+    assert image.shape == (30, 40, 3)
+
+
+def test_read_image_from_bytes_raises_when_empty():
+    with pytest.raises(ImageReadError):
+        read_image_from_bytes(b"")
+
+
+def test_read_image_from_bytes_raises_when_not_an_image():
+    with pytest.raises(ImageReadError):
+        read_image_from_bytes(b"this is not an image")
