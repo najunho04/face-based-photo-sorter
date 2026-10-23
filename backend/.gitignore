@@ -1,0 +1,22 @@
+# 로컬 개발용 NAS 대체 경로 — 업로드 이미지는 커밋하지 않고 폴더만 유지
+nas/*
+!nas/.gitkeep
+
+# Python 가상환경·캐시·패키징 산출물
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# 테스트·커버리지 산출물
+.pytest_cache/
+.coverage
+htmlcov/
+
+# InsightFace가 첫 실행 때 받는 모델 파일, PIPA 테스트 이미지 (용량 큼)
+.insightface/
+*.onnx
+datasets/

@@ -1,0 +1,13 @@
+# 패키지 설치 결과 (package-lock.json은 커밋)
+node_modules/
+
+# 빌드 산출물
+dist/
+build/
+
+# 테스트·로그
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

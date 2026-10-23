@@ -1,0 +1,33 @@
+[project]
+name = "photo-sorter-backend"
+version = "0.1.0"
+description = "행사 사진 얼굴 분류·셀카 매칭 백엔드 (API 서버 + 워커)"
+# insightface·onnxruntime 휠 호환성이 검증된 버전으로 고정 (.python-version과 같이 관리)
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # API 서버
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",   # 사진·셀카 multipart 업로드
+    "pydantic-settings>=2.4",    # backend/.env 읽기
+    "pyjwt>=2.9",                # 관리자·참가자 JWT
+    # DB
+    "psycopg[binary]>=3.2",
+    "pgvector>=0.3",             # VECTOR(512) ↔ numpy 변환
+    # Object Storage (NCP는 S3 호환)
+    "boto3>=1.35",
+    # 얼굴 검출·임베딩 (InsightFace buffalo_l, CPU 실행)
+    "insightface>=0.7.3",
+    "onnxruntime>=1.19",
+    "opencv-python-headless>=4.10",  # 서버라 GUI 없는 버전
+    "numpy>=1.26",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",               # FastAPI TestClient
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
