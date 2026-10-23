@@ -89,6 +89,7 @@ frontend/src/
     participant/  QrJoin, Entry, Preparing, Home, AllPhotos, Camera, Searching,
                   Candidates, NoMatch, MyPhotos, Viewer, SessionExpired
     admin/        Login, Events, EventCreate, Upload, Processing, Review, Folder
+    dev/          UiGallery (/dev/ui, 개발 서버 전용)
   features/
     camera/          useCamera, CameraView, ShutterButton, 권한·인앱 안내
     selfie-search/   검색 요청, 후보 선택
@@ -96,9 +97,9 @@ frontend/src/
     upload/          UploadQueue(순수 TS), useUploadQueue, Dropzone, 리사이즈
     publish/         인증코드·QR 창
   entities/
-    event/  photo/  person/   타입, 쿼리 키, API 함수, 작은 표시 컴포넌트
+    event/  photo/  person/   타입, 쿼리 키, API 함수, 작은 표시 컴포넌트(EventStatusBadge 등)
   shared/
-    ui/      shadcn 컴포넌트 + AppLogo, FaceCrop, StatusBadge, EmptyState, ErrorState
+    ui/      shadcn 컴포넌트 + AppLogo, FaceCrop, EmptyState, ErrorState, PhotoPlaceholder
     api/     client.ts, errors.ts
     lib/     image.ts, download.ts, share.ts, storage.ts
     styles/  tokens.css, index.css
@@ -161,16 +162,16 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 
 **끝났을 때 확인할 것:** `npm run dev`로 빈 화면이 뜨고, `npm run lint`·`npm run build`가 통과한다. → 확인 완료
 
-### 1단계. 디자인 시스템
-- [ ] Tailwind v4 설치, `tokens.css` 적용
-- [ ] Pretendard 가변 글꼴 적용
-- [ ] shadcn/ui 초기화, 필요한 컴포넌트 추가 (Button, Input, Label, Checkbox, Drawer, Dialog, AlertDialog, Sonner, Progress, Badge, Card, Skeleton, Carousel)
-- [ ] 버튼 변형을 명세서(8.2)에 맞게 수정: default, secondary(연한 인디고), ghost, destructive, link / 크기 lg 56, default 44, sm 36, icon 44
-- [ ] Lucide 설치
-- [ ] 공통 컴포넌트: AppLogo, StatusBadge, EmptyState, ErrorState, FaceCrop, PhotoPlaceholder
-- [ ] 개발용 컴포넌트 모음 페이지 (`/dev/ui`)
+### 1단계. 디자인 시스템 ✅ (2026-10-23 완료)
+- [x] Tailwind v4 설치, `tokens.css` 적용
+- [x] Pretendard 가변 글꼴 적용
+- [x] shadcn/ui 초기화, 필요한 컴포넌트 추가 (Button, Input, Label, Checkbox, Drawer, Dialog, AlertDialog, Sonner, Progress, Badge, Card, Skeleton, Carousel)
+- [x] 버튼 변형을 명세서(8.2)에 맞게 수정: default, secondary(연한 인디고), ghost, destructive, link / 크기 lg 56, default 44, sm 36, icon 44
+- [x] Lucide 설치
+- [x] 공통 컴포넌트: AppLogo, EventStatusBadge(`entities/event`), EmptyState, ErrorState, FaceCrop, PhotoPlaceholder
+- [x] 개발용 컴포넌트 모음 페이지 (`/dev/ui`)
 
-**끝났을 때 확인할 것:** 컴포넌트 모음 페이지의 색·글꼴·버튼·배지가 시안·명세서와 같다.
+**끝났을 때 확인할 것:** 컴포넌트 모음 페이지의 색·글꼴·버튼·배지가 시안·명세서와 같다. → 확인 완료 (브라우저에서 계산된 값 확인: 버튼 높이 56/44/36/44, 입력칸 글자 16px, 배지 색, 토스트 남색·아래 가운데, FaceCrop 자르기·실패 아이콘, 375px 폭에서 가로 스크롤 없음)
 
 ### 2단계. API 계층 + 가짜 서버
 - [ ] API 10개 요청·응답 타입
@@ -281,3 +282,8 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 | 2026-10-23 | 1 | `CLAUDE.md` 규칙 적용 범위: 풀네임·주석은 전체, TDD는 로직만 |
 | 2026-10-23 | 1 | 환경 변수 파일은 `.env.example`만 커밋. 기본값은 코드(`environment.ts`): 설정이 없으면 개발 서버는 가짜 API, 빌드는 실제 API |
 | 2026-10-23 | 1 | API 명세 기준을 저장소 `docs/api.md`로 변경. 이미지 URL 만료 3600초, 업로드는 요청당 3~5장 권장으로 반영되어 있음 |
+| 2026-10-23 | 1 | 행사 상태 배지는 행사에 딸린 표시라 `entities/event/EventStatusBadge`에 둠. 이름은 시안 기준(업로드 중·얼굴 찾는 중·사람별로 묶는 중: 정보 / 공개 중: 성공). MASTER.md의 옛 StatusBadge(검수 대기·분류 중·만료)도 시안에 맞춰 고침 |
+| 2026-10-23 | 1 | FaceCrop: 원본 크기를 몰라도 되게 CSS transform(이동 후 확대)으로 bbox 주변을 1.4배 여유 두고 동그랗게 자름. 불러오기 실패 시 사람 아이콘, 주소가 바뀌면 다시 불러오기 |
+| 2026-10-23 | 1 | 로딩 버튼은 클릭만 막고 원래 색 유지(비활성 회색으로 바꾸지 않음, 명세서 8.2 "글자 유지") |
+| 2026-10-23 | 1 | 컴포넌트 모음 `/dev/ui`는 `pages/dev/`에 두고 개발 서버에서만 불러옴(빌드 결과에 없음 확인). 3단계 라우터 전까지 `App`에서 주소를 직접 확인 |
+| 2026-10-23 | 1 | shadcn Carousel 원본의 oxlint 경고(set-state-in-effect) 1건은 그대로 둠 |
