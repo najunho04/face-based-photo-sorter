@@ -17,7 +17,10 @@
 | 디자인 명세서 | `frontend/docs/design-system/insaengnaecut/MASTER.md` |
 | 디자인 토큰 | `frontend/docs/design-system/insaengnaecut/tokens.css` |
 | 화면 시안 (35장) | https://claude.ai/artifact/W4Q5p2VuNAvjgpFbd2sWt5 |
-| API 명세 (백엔드) | https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d |
+| **팀 규칙** | 저장소 루트 `CLAUDE.md` (작업 전 반드시 읽기) |
+| **API 명세 (저장소 기준)** | 저장소 루트 `docs/api.md` — Notion 원본보다 이 문서를 우선 |
+| DB 스키마 | 저장소 루트 `docs/erd.md` |
+| API 명세 (Notion 원본) | https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d |
 | 백엔드 흐름 | https://app.notion.com/p/3fb0ea4df78580f68c86d8936c86967c |
 | PRD | https://claude.ai/code/artifact/3baf906f-2ac6-4cfb-9267-101d146e0ec9 |
 
@@ -33,9 +36,16 @@
 6. **기록:** 체크리스트를 체크하고, 정한 내용은 "결정 기록"에 남긴다.
 
 **git 규칙**
-- 팀 저장소에는 `frontend/` 폴더만 올린다. `main`은 건드리지 않고 `frontend` 브랜치에서 작업한 뒤 나중에 머지한다.
+- 프론트 작업은 저장소의 `frontend/` 폴더 안에서만 한다. 백엔드(`backend/`)·공용 문서(`docs/`)는 수정하지 않고 요청한다.
+- `main`은 건드리지 않고 `frontend` 브랜치에서 작업한 뒤 나중에 머지한다. `frontend` 브랜치는 `main` 위에 쌓여 있다.
 - 단계마다, 또는 작은 작업이 끝날 때마다 커밋한다. push는 따로 요청할 때만 한다.
-- `main`이 아직 없어서 `frontend` 브랜치는 독립적으로 시작했다. 머지할 때 `--allow-unrelated-histories`가 필요하다.
+- 저장소 루트 `.gitignore`: 환경 변수 파일은 `.env.example`만 커밋, `.vscode/` 제외.
+
+**코드 규칙 (`CLAUDE.md`를 프론트에 적용한 것)**
+- 변수·함수·파라미터 이름은 축약 없이 풀네임 (`img` ✗ → `image`, `idx` ✗ → `index`, `e` ✗ → `event`). 단, shadcn 원본 코드와 관례적인 `cn()`은 예외.
+- 코드마다 무엇을·왜 하는지 주석 1~2줄.
+- TDD는 로직에만: 업로드 대기열, 이미지 리사이즈, API 클라이언트·오류 변환, 폴더 합치기 등은 실패하는 테스트를 먼저 쓴다. 화면 컴포넌트는 직접 확인.
+- 요청이 애매하면 추측해서 구현하지 말고 먼저 묻는다.
 
 ## 3. 기술 스택과 확정된 결정
 
@@ -266,3 +276,8 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 | 2026-10-23 | 0 | 문서(`docs/`)와 디자인 명세서를 `frontend/docs/`로 이동 |
 | 2026-10-23 | 0 | 린트는 create-vite 9 기본인 oxlint 사용(ESLint 대신). Prettier 스타일은 템플릿에 맞춰 세미콜론 없음·작은따옴표 |
 | 2026-10-23 | 0 | 줄바꿈 LF 통일(`.gitattributes`) |
+| 2026-10-23 | 1 | Pretendard는 npm 패키지(dynamic subset)로 포함. 토스트는 어두운 남색(#1E1B4B), 아래 가운데, 4초 |
+| 2026-10-23 | 1 | 백엔드가 저장소를 초기화함(`main`). `frontend` 브랜치를 `main` 위로 옮김(rebase, push 전). `frontend/.gitignore`·`.env.example`은 백엔드 버전과 합침 |
+| 2026-10-23 | 1 | `CLAUDE.md` 규칙 적용 범위: 풀네임·주석은 전체, TDD는 로직만 |
+| 2026-10-23 | 1 | 환경 변수 파일은 `.env.example`만 커밋. 기본값은 코드(`environment.ts`): 설정이 없으면 개발 서버는 가짜 API, 빌드는 실제 API |
+| 2026-10-23 | 1 | API 명세 기준을 저장소 `docs/api.md`로 변경. 이미지 URL 만료 3600초, 업로드는 요청당 3~5장 권장으로 반영되어 있음 |
