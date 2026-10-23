@@ -22,3 +22,12 @@ export function saveFaceConsent(eventId: number): void {
     ...new Set([...readConsentedEventIds(), eventId]),
   ])
 }
+
+// 동의를 거둔다(PC에서 체크를 해제한 경우). 그 행사에서는 다시 동의해야 카메라가 켜진다
+export function revokeFaceConsent(eventId: number): void {
+  writeStoredValue(
+    'local',
+    faceConsentStorageKey,
+    readConsentedEventIds().filter((consentedEventId) => consentedEventId !== eventId),
+  )
+}
