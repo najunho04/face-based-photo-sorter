@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { CameraIcon, UsersRoundIcon } from 'lucide-react'
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { readMyPersonIds } from '@/entities/person/my-person-storage'
 import { PersonFaceTile } from '@/entities/person/person-face-tile'
 import { personListQueryOptions } from '@/entities/person/person-queries'
 import { useCurrentParticipantSession } from '@/entities/session/participant-session'
-import { FaceConsentSheet } from '@/features/selfie-search/face-consent-sheet'
 import { hasFaceConsent, saveFaceConsent } from '@/features/selfie-search/face-consent-storage'
 import { MyPhotosShortcut } from '@/pages/participant/my-photos-shortcut'
 import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
@@ -19,6 +18,12 @@ import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorState } from '@/shared/ui/error-state'
 import { Skeleton } from '@/shared/ui/skeleton'
+
+// ②-1 동의 시트(바닥 시트 라이브러리 포함)는 첫 화면 JS에서 빼고 따로 받는다(8단계: 첫 화면 줄이기)
+const importFaceConsentSheet = () => import('@/features/selfie-search/face-consent-sheet')
+const FaceConsentSheet = lazy(async () => ({
+  default: (await importFaceConsentSheet()).FaceConsentSheet,
+}))
 
 /** 참가자 화면은 사진 2장 이상 나온 사람만 보여 준다(배경에 한 번 지나간 사람 숨김, 결정 기록) */
 const participantMinimumPhotos = 2
@@ -41,12 +46,20 @@ export default function HomePage() {
   const navigate = useNavigate()
   const isDesktop = useMediaQuery(desktopMediaQuery)
   const [isConsentSheetOpen, setIsConsentSheetOpen] = useState(false)
+  // 시트는 한 번 연 뒤부터 계속 붙여 둔다(닫힐 때 내려가는 움직임이 끊기지 않게)
+  const [hasOpenedConsentSheet, setHasOpenedConsentSheet] = useState(false)
+
+  // 첫 화면을 그린 뒤 시트 코드를 미리 받아 둔다(버튼을 눌렀을 때 기다리지 않게)
+  useEffect(() => {
+    void importFaceConsentSheet()
+  }, [])
 
   // 셀카로 찾기: 휴대폰에서 아직 동의하지 않았으면 ②-1 동의 시트를 먼저 띄운다(PC는 촬영 화면 옆 칸에서 동의)
   function startSelfieSearch() {
     if (isDesktop || hasFaceConsent(session.eventId)) {
       void navigate(paths.eventCamera(session.accessCode))
     } else {
+      setHasOpenedConsentSheet(true)
       setIsConsentSheetOpen(true)
     }
   }
@@ -134,14 +147,18 @@ export default function HomePage() {
           </ul>
         )}
       </div>
-      <FaceConsentSheet
-        isOpen={isConsentSheetOpen}
-        onOpenChange={setIsConsentSheetOpen}
-        onAgree={() => {
-          saveFaceConsent(session.eventId)
-          void navigate(paths.eventCamera(session.accessCode))
-        }}
-      />
+      {hasOpenedConsentSheet && (
+        <Suspense fallback={null}>
+          <FaceConsentSheet
+            isOpen={isConsentSheetOpen}
+            onOpenChange={setIsConsentSheetOpen}
+            onAgree={() => {
+              saveFaceConsent(session.eventId)
+              void navigate(paths.eventCamera(session.accessCode))
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

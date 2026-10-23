@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { ImagesIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { eventProgressQueryOptions } from '@/entities/event/event-queries'
@@ -13,6 +14,7 @@ import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
 import { cn } from '@/shared/lib/utils'
+import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorState } from '@/shared/ui/error-state'
 import { FaceCrop } from '@/shared/ui/face-crop'
 import { PhotoPlaceholder } from '@/shared/ui/photo-placeholder'
@@ -68,6 +70,13 @@ export default function PersonFolderPage() {
             title="사진을 불러오지 못했어요"
             description={getErrorMessage(photosQuery.error)}
             onRetry={() => void photosQuery.refetch()}
+          />
+        ) : photosQuery.data.photos.length === 0 ? (
+          // 폴더는 있지만 사진이 없을 때(정상 흐름에선 드묾: 사진이 지워졌거나 다시 묶인 경우)
+          <EmptyState
+            icon={ImagesIcon}
+            title="이 사람이 나온 사진이 없어요"
+            description="분류 결과로 돌아가 다른 사람 폴더를 열어 주세요."
           />
         ) : (
           <PhotoGrid>

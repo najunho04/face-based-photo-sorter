@@ -1,5 +1,4 @@
 import { createBrowserRouter, redirect, type RouteObject } from 'react-router'
-import { AdministratorLayout } from '@/app/layouts/administrator-layout'
 import { ParticipantLayout } from '@/app/layouts/participant-layout'
 import { RootLayout, type RouteHandle } from '@/app/layouts/root-layout'
 import { RouteErrorScreen } from '@/app/route-error-screen'
@@ -10,18 +9,13 @@ import {
   requireParticipantSession,
 } from '@/app/route-guards'
 import NotFoundPage from '@/pages/not-found-page'
-import AllPhotosPage from '@/pages/participant/all-photos-page'
-import CandidatesPage from '@/pages/participant/candidates-page'
 import EntryPage from '@/pages/participant/entry-page'
 import HomePage from '@/pages/participant/home-page'
-import MyPhotosPage from '@/pages/participant/my-photos-page'
-import PreparingPage from '@/pages/participant/preparing-page'
 import QrJoinPage from '@/pages/participant/qr-join-page'
-import SessionExpiredPage from '@/pages/participant/session-expired-page'
 import { paths } from '@/shared/config/paths'
 
 // 화면 주소표 (계획 문서 5장). 가드는 loader에서 redirect를 던져 화면을 그리기 전에 돌려보낸다.
-// 참가자 첫 화면은 바로 불러오고, 관리자 화면·카메라·크게 보기는 처음 열 때 따로 불러온다(lazy).
+// 처음 들어오는 화면(입장·QR 입장·사람별 사진)만 바로 불러오고, 나머지는 처음 열 때 따로 불러온다(lazy, 8단계 결정).
 
 // 탭 제목을 붙이는 짧은 도구
 function titled(title: string): RouteHandle {
@@ -37,7 +31,11 @@ function lazyPage(
 
 const participantRoutes: RouteObject[] = [
   { index: true, Component: EntryPage, handle: titled('입장') },
-  { path: 'expired', Component: SessionExpiredPage, handle: titled('입장 시간 만료') },
+  {
+    path: 'expired',
+    lazy: lazyPage(() => import('@/pages/participant/session-expired-page')),
+    handle: titled('입장 시간 만료'),
+  },
   {
     path: 'e/:code',
     children: [
@@ -46,20 +44,36 @@ const participantRoutes: RouteObject[] = [
         // 이 아래 화면은 이 행사에 입장해 있어야 한다
         loader: requireParticipantSession,
         children: [
-          { path: 'preparing', Component: PreparingPage, handle: titled('사진 정리 중') },
+          {
+            path: 'preparing',
+            lazy: lazyPage(() => import('@/pages/participant/preparing-page')),
+            handle: titled('사진 정리 중'),
+          },
           {
             // 이 아래 화면은 행사가 공개(open)돼 있어야 한다
             loader: requireOpenEvent,
             children: [
               { path: 'home', Component: HomePage, handle: titled('사람별 사진') },
-              { path: 'all', Component: AllPhotosPage, handle: titled('전체 사진') },
+              {
+                path: 'all',
+                lazy: lazyPage(() => import('@/pages/participant/all-photos-page')),
+                handle: titled('전체 사진'),
+              },
               {
                 path: 'camera',
                 lazy: lazyPage(() => import('@/pages/participant/camera-page')),
                 handle: titled('셀카로 찾기'),
               },
-              { path: 'candidates', Component: CandidatesPage, handle: titled('후보 선택') },
-              { path: 'photos', Component: MyPhotosPage, handle: titled('내 사진') },
+              {
+                path: 'candidates',
+                lazy: lazyPage(() => import('@/pages/participant/candidates-page')),
+                handle: titled('후보 선택'),
+              },
+              {
+                path: 'photos',
+                lazy: lazyPage(() => import('@/pages/participant/my-photos-page')),
+                handle: titled('내 사진'),
+              },
             ],
           },
         ],
@@ -140,7 +154,10 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         loader: requireAdministratorSession,
-        Component: AdministratorLayout,
+        // 관리자 레이아웃(왼쪽 메뉴·☰ 시트)도 관리자 화면을 열 때 받는다
+        lazy: async () => ({
+          Component: (await import('@/app/layouts/administrator-layout')).AdministratorLayout,
+        }),
         children: [{ ErrorBoundary: RouteErrorScreen, children: administratorRoutes }],
       },
       ...developmentRoutes,

@@ -21,6 +21,7 @@ import { ZoomablePhoto } from '@/features/photo-viewer/zoomable-photo'
 import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
 import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
+import { reducedMotionMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
@@ -182,11 +183,13 @@ function ViewerCarousel({
 }: ViewerCarouselProps) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  // 동작 줄이기가 켜져 있으면 넘길 때 미끄러지지 않고 바로 다음 사진으로 바뀐다(Embla duration 0 = 즉시 이동)
+  const prefersReducedMotion = useMediaQuery(reducedMotionMediaQuery)
   const [carouselRef, carouselApi] = useEmblaCarousel({
     startIndex: initialIndex,
     // 확대 중에는 끌기를 확대 이동에 양보한다
     watchDrag: !isZoomed,
-    duration: 22,
+    duration: prefersReducedMotion ? 0 : 22,
   })
   const [isZoomTipVisible, setIsZoomTipVisible] = useState(true)
   const saver = usePhotoSaver()

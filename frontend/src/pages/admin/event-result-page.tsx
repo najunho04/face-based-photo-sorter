@@ -106,10 +106,10 @@ export default function EventResultPage() {
             사람 {progress.personCount ?? 0}명 · 사진 많은 순
           </span>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-4 py-0.5">
           <label
             htmlFor={toggleId}
-            className="flex min-h-6 cursor-pointer items-center gap-2.5 text-small font-medium"
+            className="flex min-h-11 cursor-pointer items-center gap-2.5 text-small font-medium"
           >
             <Checkbox
               id={toggleId}

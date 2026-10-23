@@ -4,6 +4,7 @@ import {
   TransformWrapper,
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
+import { reducedMotionMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { cn } from '@/shared/lib/utils'
 
 type ZoomablePhotoProps = {
@@ -27,6 +28,9 @@ export function ZoomablePhoto({
   const transformRef = useRef<ReactZoomPanPinchRef>(null)
   const [isZoomed, setIsZoomed] = useState(false)
   const [loadedUrl, setLoadedUrl] = useState<string>()
+  // 동작 줄이기가 켜져 있으면 확대·되돌리기·밀림 효과 없이 바로 바꾼다(라이브러리가 JS로 움직여 CSS 규칙이 안 먹음)
+  const prefersReducedMotion = useMediaQuery(reducedMotionMediaQuery)
+  const animationTime = prefersReducedMotion ? 0 : undefined
 
   // 다른 사진으로 넘어가면 확대를 풀어 둔다(다시 돌아왔을 때 원래 크기로 보이게)
   useEffect(() => {
@@ -38,10 +42,12 @@ export function ZoomablePhoto({
       ref={transformRef}
       minScale={1}
       maxScale={4}
-      doubleClick={{ mode: 'toggle', step: 1 }}
+      doubleClick={{ mode: 'toggle', step: 1, animationTime }}
       // 확대하지 않았을 때는 끌기를 넘기기(Embla)에 양보한다
       panning={{ disabled: !isZoomed, velocityDisabled: true }}
       wheel={{ step: 0.2 }}
+      zoomAnimation={{ disabled: prefersReducedMotion }}
+      autoAlignment={{ animationTime, velocityAlignmentTime: animationTime }}
       onTransform={(_, state) => {
         const nextIsZoomed = state.scale > 1.01
         if (nextIsZoomed !== isZoomed) {
