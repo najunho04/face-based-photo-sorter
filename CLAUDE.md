@@ -9,9 +9,10 @@
 - 프론트 1명 (React) / 인프라 1명
 
 ## 스택
-- Python 백엔드, Ubuntu 서버, PostgreSQL + pgvector (VECTOR(512), 코사인 유사도)
+- Python 3.12 + uv, Ubuntu 서버, PostgreSQL 16 + pgvector (VECTOR(512), 코사인 유사도), SQLAlchemy ORM
 - NCP: ALB → API 서버(ASG) / 워커 서버(ASG), NAS(NFS) 원본 임시 저장, Object Storage 보관·Pre-signed URL
 - 별도 큐 없음: `photos.status`가 작업 큐 역할
+- 실행(backend/): `uv sync` → `cp .env.example .env` → `docker compose up -d` → `uv run pytest`
 
 ## 처리 흐름
 1. 업로드: 웹서버가 `/nas/event{id}/`에 저장 + `photos` INSERT(`uploaded`)

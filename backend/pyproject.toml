@@ -11,16 +11,18 @@ dependencies = [
     "python-multipart>=0.0.9",   # 사진·셀카 multipart 업로드
     "pydantic-settings>=2.4",    # backend/.env 읽기
     "pyjwt>=2.9",                # 관리자·참가자 JWT
-    # DB
+    # DB: SQLAlchemy ORM + psycopg 드라이버
+    "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
-    "pgvector>=0.3",             # VECTOR(512) ↔ numpy 변환
+    "pgvector>=0.3",             # VECTOR(512) 컬럼 타입 (pgvector.sqlalchemy)
     # Object Storage (NCP는 S3 호환)
     "boto3>=1.35",
-    # 얼굴 검출·임베딩 (InsightFace buffalo_l, CPU 실행)
-    "insightface>=0.7.3",
-    "onnxruntime>=1.19",
-    "opencv-python-headless>=4.10",  # 서버라 GUI 없는 버전
-    "numpy>=1.26",
+    "numpy>=1.26",               # 벡터 연산 (pgvector 변환, 분류)
+    # 얼굴 검출·임베딩 (extraction/, matching/) 라이브러리는 B 담당이 선택해서 `uv add`로 추가
+    # 참고 후보 (Notion 사진 분석 모델 페이지 기준):
+    # "insightface>=0.7.3",
+    # "onnxruntime>=1.19",
+    # "opencv-python-headless>=4.10",
 ]
 
 [dependency-groups]
