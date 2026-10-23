@@ -53,6 +53,7 @@
   --warning-soft: #fffbeb;
   --danger: #b91c1c;
   --danger-soft: #fef2f2;
+  --danger-border: #fecaca; /* 실패 목록 상자 테두리(시안 A4·A5) */
   --neutral-soft: #f3f4f6;
 
   --placeholder: #eef0f4; /* 사진 로딩 자리 */
@@ -104,6 +105,7 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
   --color-neutral-soft: var(--neutral-soft);
   --color-placeholder: var(--placeholder);
   --color-dark-bg: var(--dark-bg);
