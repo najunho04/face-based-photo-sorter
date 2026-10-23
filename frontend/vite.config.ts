@@ -15,6 +15,10 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  server: {
+    // 실제 휴대폰 확인용 Cloudflare 임시 터널 주소(https)로 들어오는 요청을 허용한다(개발 서버에만 적용, 결정 기록 5단계)
+    allowedHosts: ['.trycloudflare.com'],
+  },
   test: {
     // 로직 테스트만 돌린다(TDD 대상). sessionStorage·location이 필요해 가벼운 브라우저 흉내(happy-dom)를 쓴다
     environment: 'happy-dom',
