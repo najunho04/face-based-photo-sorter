@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeftIcon, LogOutIcon, MenuIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { paths } from '@/shared/config/paths'
@@ -109,6 +110,8 @@ type AdministratorMobileHeaderProps = {
   eventName?: string
   /** 있으면 왼쪽에 뒤로 가기 버튼(행사 안의 화면), 없으면 로고와 ☰ 메뉴(첫 화면) */
   backTo?: string
+  /** 오른쪽 끝에 둘 버튼(시안 M3의 'QR 보기' 등) */
+  action?: ReactNode
 }
 
 /** 휴대폰·태블릿(1024px 미만) 위쪽 머리글. PC에서는 숨긴다 */
@@ -116,6 +119,7 @@ export function AdministratorMobileHeader({
   title,
   eventName,
   backTo,
+  action,
 }: AdministratorMobileHeaderProps) {
   return (
     <header className="flex items-center gap-1 border-b border-border bg-background px-3 pt-[calc(env(safe-area-inset-top)+12px)] pb-3 lg:hidden">
@@ -132,6 +136,7 @@ export function AdministratorMobileHeader({
             )}
             <h1 className="truncate text-[18px] leading-6 font-bold">{title}</h1>
           </div>
+          {action && <div className="ml-auto shrink-0 pr-1">{action}</div>}
         </>
       ) : (
         <>
