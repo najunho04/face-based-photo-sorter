@@ -28,8 +28,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.3",
-    "httpx>=0.27",               # FastAPI TestClient
+    "httpx2>=2.16.0",            # FastAPI TestClient (Starlette가 httpx 대신 요구)
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# backend/를 import 기준으로 둬서 테스트에서 `import core`처럼 도메인 폴더를 바로 가져옴
+pythonpath = ["."]
