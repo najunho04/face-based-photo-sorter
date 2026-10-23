@@ -106,9 +106,13 @@ function CandidateSelection({
           <br className="lg:hidden" /> 본인이면 모두 골라주세요.
         </p>
       </div>
-      <ul className="mt-12 flex flex-wrap justify-center gap-3 lg:mt-9 lg:gap-5">
+      {/* 휴대폰: 세 칸을 한 줄에(칸 폭은 화면에 맞춰 최대 106px) / PC: 200px 카드 */}
+      <ul className="mt-12 flex justify-center gap-3 lg:mt-9 lg:flex-wrap lg:gap-5">
         {candidates.map((candidate, index) => (
-          <li key={candidate.personId}>
+          <li
+            key={candidate.personId}
+            className="w-[calc((100%-1.5rem)/3)] max-w-[106px] lg:w-auto lg:max-w-none"
+          >
             <CandidateCard
               candidate={candidate}
               order={index + 1}

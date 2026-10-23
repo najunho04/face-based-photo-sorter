@@ -22,6 +22,8 @@ export function CandidateCard({
   onImageError,
 }: CandidateCardProps) {
   const isDesktop = useMediaQuery(desktopMediaQuery)
+  // 360px보다 좁은 휴대폰에서는 세 명이 한 줄에 들어가도록 얼굴을 줄인다
+  const isNarrowPhone = !useMediaQuery('(min-width: 360px)')
   return (
     <button
       type="button"
@@ -29,7 +31,7 @@ export function CandidateCard({
       aria-label={`후보 ${order}, 사진 ${candidate.photoCount}장`}
       onClick={onToggle}
       className={cn(
-        'relative flex w-[106px] flex-col items-center gap-2.5 rounded-lg py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-[200px] lg:gap-3.5 lg:border lg:pt-6 lg:pb-5',
+        'relative flex w-full flex-col items-center gap-2.5 rounded-lg py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-[200px] lg:gap-3.5 lg:border lg:pt-6 lg:pb-5',
         isSelected
           ? 'bg-secondary lg:border-2 lg:border-primary'
           : 'bg-background lg:border-border',
@@ -44,7 +46,7 @@ export function CandidateCard({
         <FaceCrop
           imageUrl={candidate.repFace.url}
           faceBox={candidate.repFace.bbox}
-          size={isDesktop ? 140 : 92}
+          size={isDesktop ? 140 : isNarrowPhone ? 76 : 92}
           onImageError={onImageError}
         />
       </span>

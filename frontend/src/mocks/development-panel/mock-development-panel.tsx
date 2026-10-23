@@ -153,6 +153,15 @@ export default function MockDevelopmentPanel() {
               />
               이미지 주소 만료를 60초로 줄이기
             </label>
+            <label className="flex items-center gap-3 text-body">
+              <Checkbox
+                checked={settings.useFakeCamera}
+                onCheckedChange={(checked) =>
+                  updateMockSettings({ useFakeCamera: checked === true })
+                }
+              />
+              가짜 카메라 쓰기(웹캠 없이 촬영 확인)
+            </label>
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="secondary" size="sm" onClick={expireAllTokens}>
                 지금 토큰 만료시키기

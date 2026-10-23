@@ -25,6 +25,7 @@ import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
 import { resizeImageFileToJpeg } from '@/shared/lib/image-resize'
 import { desktopMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
+import { cn } from '@/shared/lib/utils'
 import { AppLogo } from '@/shared/ui/app-logo'
 import { Button } from '@/shared/ui/button'
 import { ErrorState } from '@/shared/ui/error-state'
@@ -248,7 +249,10 @@ export default function CameraPage() {
       <div className="flex flex-1 flex-col px-4 pt-4">{preview}</div>
       <div className="grid grid-cols-3 items-center px-10 pt-6">
         <div />
-        <div className="justify-self-center">
+        {/* 카메라를 쓸 수 없을 때는 셔터를 숨긴다(자리는 남겨 배치가 흔들리지 않게) */}
+        <div
+          className={cn('justify-self-center', isCameraUnavailable(camera.status) && 'invisible')}
+        >
           <ShutterButton
             isReady={camera.status === 'ready'}
             onCapture={() => void captureFromCamera()}

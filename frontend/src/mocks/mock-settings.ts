@@ -18,6 +18,8 @@ export type MockSettings = {
   shortImageExpiry: boolean
   /** 이 시각(밀리초) 전에 발급된 토큰은 모두 만료로 본다 */
   tokensInvalidBefore: number
+  /** 실제 카메라 대신 캔버스로 그린 얼굴 영상을 쓴다(웹캠 없는 PC에서 촬영 확인용) */
+  useFakeCamera: boolean
 }
 
 const settingsKey = 'insaengnaecut.mock-settings'
@@ -28,6 +30,7 @@ const defaultMockSettings: MockSettings = {
   nextRequestFailure: 'none',
   shortImageExpiry: false,
   tokensInvalidBefore: 0,
+  useFakeCamera: false,
 }
 
 // 저장된 값이 객체인지만 확인한다. 항목별 값은 아래에서 기본값과 합쳐 빈 항목을 채운다

@@ -1,3 +1,4 @@
+import { installFakeCamera } from '@/mocks/fake-camera'
 import { mockHandlers } from '@/mocks/handlers'
 
 // 개발 서버에서 가짜 API를 켠다. main.tsx가 화면을 그리기 전에 기다려서 첫 요청부터 가짜 API가 받게 한다.
@@ -13,4 +14,6 @@ export async function startMockApi(): Promise<void> {
     },
   })
   await network.enable()
+  // 패널에서 '가짜 카메라'를 켜면 카메라 요청에 그림 영상을 돌려준다
+  installFakeCamera()
 }
