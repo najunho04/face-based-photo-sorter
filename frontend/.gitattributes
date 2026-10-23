@@ -1,0 +1,5 @@
+# 줄바꿈을 LF로 통일 (Windows에서 커밋해도 팀원 화면에서 전체 줄이 바뀌지 않게)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.woff2 binary
