@@ -1,14 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { CameraIcon, UsersRoundIcon } from 'lucide-react'
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { readMyPersonIds } from '@/entities/person/my-person-storage'
 import { PersonFaceTile } from '@/entities/person/person-face-tile'
 import { personListQueryOptions } from '@/entities/person/person-queries'
 import { useCurrentParticipantSession } from '@/entities/session/participant-session'
+import { FaceConsentSheet } from '@/features/selfie-search/face-consent-sheet'
+import { hasFaceConsent, saveFaceConsent } from '@/features/selfie-search/face-consent-storage'
 import { MyPhotosShortcut } from '@/pages/participant/my-photos-shortcut'
 import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
 import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
+import { desktopMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
 import { AppLogo } from '@/shared/ui/app-logo'
 import { Button } from '@/shared/ui/button'
@@ -34,6 +38,18 @@ export default function HomePage() {
   const refetchOnImageError = useRefetchOnImageError(personsQuery.refetch)
   const myPersonIds = readMyPersonIds(session.eventId)
   const hasMyPersons = myPersonIds.length > 0
+  const navigate = useNavigate()
+  const isDesktop = useMediaQuery(desktopMediaQuery)
+  const [isConsentSheetOpen, setIsConsentSheetOpen] = useState(false)
+
+  // 셀카로 찾기: 휴대폰에서 아직 동의하지 않았으면 ②-1 동의 시트를 먼저 띄운다(PC는 촬영 화면 옆 칸에서 동의)
+  function startSelfieSearch() {
+    if (isDesktop || hasFaceConsent(session.eventId)) {
+      void navigate(paths.eventCamera(session.accessCode))
+    } else {
+      setIsConsentSheetOpen(true)
+    }
+  }
 
   return (
     <div className="flex flex-col pb-[calc(env(safe-area-inset-bottom)+32px)] lg:pb-12">
@@ -55,11 +71,9 @@ export default function HomePage() {
           </p>
         </div>
         {!hasMyPersons && (
-          <Button asChild size="lg">
-            <Link to={paths.eventCamera(session.accessCode)}>
-              <CameraIcon />
-              셀카로 내 사진 빨리 찾기
-            </Link>
+          <Button size="lg" onClick={startSelfieSearch}>
+            <CameraIcon />
+            셀카로 내 사진 빨리 찾기
           </Button>
         )}
       </div>
@@ -120,6 +134,14 @@ export default function HomePage() {
           </ul>
         )}
       </div>
+      <FaceConsentSheet
+        isOpen={isConsentSheetOpen}
+        onOpenChange={setIsConsentSheetOpen}
+        onAgree={() => {
+          saveFaceConsent(session.eventId)
+          void navigate(paths.eventCamera(session.accessCode))
+        }}
+      />
     </div>
   )
 }
