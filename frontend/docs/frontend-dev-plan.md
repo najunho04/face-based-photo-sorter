@@ -97,16 +97,17 @@ frontend/src/
     upload/          UploadQueue(순수 TS), useUploadQueue, Dropzone, 리사이즈
     publish/         인증코드·QR 창
   entities/
-    event/  photo/  person/   타입, 쿼리 키, API 함수, 작은 표시 컴포넌트(EventStatusBadge 등)
+    session/ event/ photo/ person/   타입, 쿼리 키, API 함수, 작은 표시 컴포넌트(EventStatusBadge 등)
   shared/
     ui/      shadcn 컴포넌트 + AppLogo, FaceCrop, EmptyState, ErrorState, PhotoPlaceholder
-    api/     client.ts, errors.ts
-    lib/     image.ts, download.ts, share.ts, storage.ts
+    api/     client.ts, api-error.ts, error-messages.ts, token-storage.ts, query-client.ts
+    lib/     stored-value.ts (+ 이후 image.ts, download.ts, share.ts)
     styles/  tokens.css, index.css
-  mocks/   MSW 핸들러, 샘플 데이터, 자리 표시 이미지
+  mocks/   MSW 핸들러, 샘플 데이터, 일러스트 사진, 오류 재현 패널
 ```
 
 규칙: **위에서 아래로만 import** (app → pages → features → entities → shared). features끼리는 서로 import하지 않음.
+`mocks/`는 옆에 붙은 개발 도구라 entities·shared를 쓸 수 있지만, `mocks/`를 import하는 곳은 `main.tsx`와 테스트뿐이다.
 
 ## 5. 라우트
 
@@ -173,16 +174,16 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 
 **끝났을 때 확인할 것:** 컴포넌트 모음 페이지의 색·글꼴·버튼·배지가 시안·명세서와 같다. → 확인 완료 (브라우저에서 계산된 값 확인: 버튼 높이 56/44/36/44, 입력칸 글자 16px, 배지 색, 토스트 남색·아래 가운데, FaceCrop 자르기·실패 아이콘, 375px 폭에서 가로 스크롤 없음)
 
-### 2단계. API 계층 + 가짜 서버
-- [ ] API 10개 요청·응답 타입
-- [ ] `client.ts`: 기본 주소, 토큰 헤더, 공통 응답 해석, 오류를 `ApiError(code, status)`로 변환, 401 처리 연결점
-- [ ] `errors.ts`: 오류 코드 → 한국어 문구
-- [ ] 토큰·세션 저장소 (관리자/참가자, sessionStorage)
-- [ ] TanStack Query 설정, 쿼리 키
-- [ ] MSW: 10개 API 핸들러, 샘플 데이터(행사 4개 상태별, 사람 48명, 사진 100장), 자리 표시 이미지, 처리 진행률 시뮬레이션
-- [ ] 오류 상황 재현 스위치 (예: 잘못된 코드, 얼굴 없음, 후보 0명)
+### 2단계. API 계층 + 가짜 서버 ✅ (2026-10-23 완료)
+- [x] API 10개 요청·응답 타입 (`entities/session·event·photo·person`)
+- [x] `client.ts`: 기본 주소, 토큰 헤더, 공통 응답 해석, 오류를 `ApiError(code, status)`로 변환, 401 처리 연결점
+- [x] `error-messages.ts`: 오류 코드 → 한국어 문구
+- [x] 토큰·세션 저장소 (관리자/참가자, sessionStorage)
+- [x] TanStack Query 설정(`query-client.ts`), 쿼리 키 (Provider 연결은 3단계)
+- [x] MSW: 10개 API 핸들러, 샘플 데이터(행사 4개 상태별, 사람 48명, 사진 100장), 일러스트 사진, 처리 진행률 시뮬레이션
+- [x] 오류 상황 재현 패널 (셀카 결과, 응답 속도, 다음 요청 실패, 이미지·토큰 만료, 초기화)
 
-**끝났을 때 확인할 것:** 화면 없이 각 API를 호출해 가짜 데이터와 오류가 명세 형식대로 온다.
+**끝났을 때 확인할 것:** 화면 없이 각 API를 호출해 가짜 데이터와 오류가 명세 형식대로 온다. → 확인 완료 (Vitest 58개: 클라이언트·오류 문구·토큰·재시도 규칙·가짜 API 24개 시나리오. 브라우저에서도 10개 API 직접 호출, 일러스트 사진·bbox 위치, 패널 설정·초기화 확인. 빌드 결과에 가짜 API 코드·서비스 워커 없음 확인)
 
 ### 3단계. 라우팅·레이아웃
 - [ ] 라우트(5장) 등록, 관리자 묶음 lazy 로딩
@@ -269,6 +270,8 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 | 이미지 URL 만료 시간 불일치: `CLAUDE.md` 600초 / `docs/api.md` 3600초 (프론트는 응답의 `expiresIn`을 따름) | 백엔드 확인 필요 |
 | #6 참가자 입장 응답에 `expiresIn` 없음 (#1 관리자 로그인에는 있음) | 백엔드 확인 필요 |
 | 업로드 용량 제한(413)을 nginx·ALB가 먼저 막으면 JSON이 아닌 응답이 옴 → 앞단 제한 값 확인 (프론트는 상태 코드로 `FILE_TOO_LARGE` 처리) | 인프라 확인 필요 |
+| #7 전체 사진을 공개(`open`) 전에 부르면 어떻게 되는지 명세에 없음 (가짜 API는 `EVENT_NOT_READY`로 가정) | 백엔드 확인 필요 |
+| 참가자 입장 코드가 대소문자를 구분하는지 (프론트는 대문자로 바꿔 보냄, 가짜 API는 그대로 비교) | 백엔드 확인 필요 |
 
 ## 9. 결정 기록
 
@@ -299,3 +302,7 @@ PC 화면(P1~P5)과 관리자 휴대폰 화면(M1~M3)은 같은 페이지의 반
 | 2026-10-23 | 2 | 오류 분기는 HTTP 상태가 아닌 `error.code`로(`LOGIN_FAILED`도 401). JSON이 아닌 응답·네트워크 끊김·시간 초과는 프론트 전용 코드로 변환. 문구는 코드별 프론트 문구 → 서버 `message` → 일반 문구 순 |
 | 2026-10-23 | 2 | 이미지 만료 시간은 숫자를 박지 않고 응답의 `expiresIn` 사용 |
 | 2026-10-23 | 2 | 업로드 요청당 장 수(계획 1장 / api.md 3~5장)는 7단계에서 정함. 가짜 핸들러는 여러 장을 받음 |
+| 2026-10-23 | 2 | MSW 3(2026-09 출시)의 Vite 플러그인(`msw/vite`) 사용: 서비스 워커 파일을 `public/`에 복사하지 않고 개발 서버가 내려줌. 가짜 API는 개발 서버에서만(빌드는 항상 실제 API) |
+| 2026-10-23 | 2 | 응답 대기 시간: 기본 15초, 셀카 검색 30초, 업로드 60초. 화면을 떠나 취소한 요청은 오류로 바꾸지 않음 |
+| 2026-10-23 | 2 | 가짜 데이터: 샘플 행사 1~3번은 상태 고정(공개·묶는 중·얼굴 찾는 중 63/100), 4번 '동아리 MT'와 새로 만든 행사는 업로드·완료가 실제로 동작. 완료 후 장당 0.3초 → 묶기 5초 → 공개. 13번째 사진은 실패로 만듦(시안 A5 예시) |
+| 2026-10-23 | 2 | 사람·사진 id는 `행사 번호 × 10000 + 행사 안 번호`(가짜 API 안에서만 쓰는 규칙, 화면은 id 모양에 기대지 않음) |
