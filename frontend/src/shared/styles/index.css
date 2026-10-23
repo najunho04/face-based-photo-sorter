@@ -1,0 +1,7 @@
+/* 0단계 최소 스타일. 1단계에서 Tailwind와 디자인 토큰(tokens.css)으로 바뀐다. */
+body {
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  word-break: keep-all;
+}
