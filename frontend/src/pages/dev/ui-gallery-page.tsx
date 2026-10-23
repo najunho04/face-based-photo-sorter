@@ -53,7 +53,6 @@ import { Label } from '@/shared/ui/label'
 import { PhotoPlaceholder } from '@/shared/ui/photo-placeholder'
 import { Progress } from '@/shared/ui/progress'
 import { Skeleton } from '@/shared/ui/skeleton'
-import { Toaster } from '@/shared/ui/sonner'
 
 // 개발 서버에서만 열리는 컴포넌트 모음(/dev/ui). 색·글자·버튼·배지가 명세서와 같은지 눈으로 확인하는 용도
 
@@ -400,9 +399,6 @@ export default function UiGalleryPage() {
           <CarouselNext />
         </Carousel>
       </GallerySection>
-
-      {/* 알림 표시 자리. 3단계에서 앱 전체 Provider로 옮긴다 */}
-      <Toaster />
     </main>
   )
 }

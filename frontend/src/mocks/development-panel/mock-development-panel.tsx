@@ -1,7 +1,8 @@
 import { FlaskConicalIcon } from 'lucide-react'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EventStatusBadge } from '@/entities/event/event-status-badge'
-import { mockAdministratorAccount } from '@/mocks/mock-accounts'
+import { joinEvent, loginAdministrator } from '@/entities/session/session-api'
+import { mockAdministratorAccount, mockSampleAccessCodes } from '@/mocks/mock-accounts'
 import { listMockEvents, resetMockDatabase, type MockEventSnapshot } from '@/mocks/mock-database'
 import {
   getMockSettings,
@@ -10,7 +11,12 @@ import {
   updateMockSettings,
   type MockSettings,
 } from '@/mocks/mock-settings'
-import { clearAllSessions } from '@/shared/api/token-storage'
+import {
+  clearAllSessions,
+  saveAdministratorSession,
+  saveParticipantSession,
+} from '@/shared/api/token-storage'
+import { paths } from '@/shared/config/paths'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
 import {
@@ -48,6 +54,13 @@ export default function MockDevelopmentPanel() {
   const settings = useSyncExternalStore(subscribeMockSettings, getMockSettings)
   const [mockEvents, setMockEvents] = useState<MockEventSnapshot[]>([])
   const [tokenExpiredNotice, setTokenExpiredNotice] = useState(false)
+  const [quickEntryNotice, setQuickEntryNotice] = useState('')
+
+  // 로그인·입장 화면을 건너뛰고 바로 들어간다(화면 확인용). 실패하면 패널에 알린다
+  function runQuickEntry(enter: () => Promise<void>) {
+    setQuickEntryNotice('')
+    enter().catch(() => setQuickEntryNotice('실패했어요. 다시 눌러주세요.'))
+  }
 
   // 패널을 열 때마다 행사 목록을 새로 읽는다(관리자가 만든 행사·진행 상태 반영)
   function handleOpenChange(open: boolean) {
@@ -74,7 +87,9 @@ export default function MockDevelopmentPanel() {
       <DrawerTrigger asChild>
         <button
           type="button"
-          className="fixed bottom-[calc(12px+env(safe-area-inset-bottom))] left-3 z-50 flex h-11 items-center gap-1.5 rounded-full bg-foreground/85 px-3.5 text-caption text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          // 휴대폰: 화면 아래 고정 버튼·관리자 '새 행사' 버튼을 가리지 않게 왼쪽 가장자리 가운데에 작은 탭으로,
+          // PC: 관리자 왼쪽 메뉴(로그아웃)를 가리지 않게 오른쪽 아래에 둔다
+          className="fixed top-1/2 left-0 z-50 flex h-11 -translate-y-1/2 items-center gap-1.5 rounded-r-full bg-foreground/85 pr-3.5 pl-2.5 text-caption text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:top-auto lg:right-4 lg:bottom-4 lg:left-auto lg:translate-y-0 lg:rounded-full lg:px-3.5"
         >
           <FlaskConicalIcon className="size-4" aria-hidden="true" />
           가짜 API
@@ -142,6 +157,37 @@ export default function MockDevelopmentPanel() {
             </div>
           </PanelSection>
 
+          <PanelSection title="빠른 이동" description="로그인·입장 화면을 건너뛰고 바로 들어가요.">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => runQuickEntry(signInAsMockAdministrator)}
+              >
+                관리자로 로그인
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => runQuickEntry(() => joinMockEvent(mockSampleAccessCodes.open))}
+              >
+                공개된 행사로 입장
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => runQuickEntry(() => joinMockEvent(mockSampleAccessCodes.extracting))}
+              >
+                정리 중인 행사로 입장
+              </Button>
+            </div>
+            {quickEntryNotice && (
+              <p role="status" className="text-small text-danger">
+                {quickEntryNotice}
+              </p>
+            )}
+          </PanelSection>
+
           <PanelSection title="테스트 정보">
             <p className="text-small text-muted-foreground">
               관리자 계정{' '}
@@ -173,6 +219,32 @@ export default function MockDevelopmentPanel() {
         </div>
       </DrawerContent>
     </Drawer>
+  )
+}
+
+// 테스트 계정으로 로그인하고 최근 행사 화면을 새로 연다(패널은 라우터 밖에 있어 주소를 직접 바꾼다)
+async function signInAsMockAdministrator() {
+  const login = await loginAdministrator(mockAdministratorAccount)
+  saveAdministratorSession({
+    accessToken: login.accessToken,
+    expiresInSeconds: login.expiresIn,
+    loginId: mockAdministratorAccount.loginId,
+  })
+  window.location.assign(paths.administratorEvents)
+}
+
+// 샘플 행사로 입장하고, 공개됐으면 사람별 사진, 아니면 사진 정리 중 화면을 연다
+async function joinMockEvent(accessCode: string) {
+  const join = await joinEvent(accessCode)
+  saveParticipantSession({
+    accessToken: join.accessToken,
+    eventId: join.eventId,
+    eventName: join.eventName,
+    accessCode,
+    isEventOpen: join.status === 'open',
+  })
+  window.location.assign(
+    join.status === 'open' ? paths.eventHome(accessCode) : paths.eventPreparing(accessCode),
   )
 }
 
