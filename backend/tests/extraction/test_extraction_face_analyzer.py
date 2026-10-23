@@ -2,14 +2,18 @@
 # InsightFace 모델을 실제로 띄우지 않고 가짜 얼굴 객체로 검증해서 테스트가 빠르고 모델 파일이 없어도 돌아감
 from types import SimpleNamespace
 
+import cv2
 import numpy
 import pytest
 
 from database.face_contract import validate_face_record
 from extraction.face_analyzer import (
     DetectedFace,
+    FaceAnalyzer,
+    ImageReadError,
     convert_detected_face,
     filter_good_quality_faces,
+    read_image,
     resize_for_analysis,
 )
 
@@ -159,3 +163,78 @@ def test_convert_restores_bbox_to_original_image_coordinates():
     detected_face = convert_detected_face(insightface_face, scale=0.5)
 
     assert detected_face.bounding_box == {"x": 100, "y": 50, "w": 120, "h": 150}
+
+
+# --- 사진 읽기: 워커가 NAS 경로에서 사진을 읽음. 못 읽으면 "영구 오류"로 구분할 수 있게 전용 예외를 냄 ---
+
+def test_read_image_reads_file_in_korean_path(tmp_path):
+    # Windows 로컬 개발 경로에 한글이 있어도 읽혀야 함 (cv2.imread는 한글 경로에서 실패)
+    image_path = tmp_path / "행사사진.jpg"
+    original_image = numpy.full((30, 40, 3), 200, dtype=numpy.uint8)
+    cv2.imencode(".jpg", original_image)[1].tofile(image_path)
+
+    image = read_image(image_path)
+
+    assert image.shape == (30, 40, 3)
+
+
+def test_read_image_raises_when_file_is_missing(tmp_path):
+    with pytest.raises(ImageReadError):
+        read_image(tmp_path / "없는사진.jpg")
+
+
+def test_read_image_raises_when_file_is_not_an_image(tmp_path):
+    # 업로드 중 깨졌거나 이미지가 아닌 파일
+    broken_path = tmp_path / "broken.jpg"
+    broken_path.write_bytes(b"this is not an image")
+
+    with pytest.raises(ImageReadError):
+        read_image(broken_path)
+
+
+# --- FaceAnalyzer: 축소 → 모델 검출 → 원본 좌표 변환 → 품질 필터를 한 번에 ---
+# 실제 InsightFace 모델 대신 가짜 모델을 넣어서, 모델 없이도 "부품 연결 순서"를 빠르게 검증
+
+class FakeFaceAnalysis:
+    # InsightFace FaceAnalysis의 get(image)만 흉내냄: 받은 이미지 크기를 기록하고 정해 둔 얼굴 목록을 돌려줌
+    def __init__(self, insightface_faces):
+        self.insightface_faces = insightface_faces
+        self.received_image_shapes = []
+
+    def get(self, image):
+        self.received_image_shapes.append(image.shape)
+        return self.insightface_faces
+
+
+def test_analyzer_analyzes_resized_image_and_returns_original_coordinates():
+    fake_face_analysis = FakeFaceAnalysis([build_fake_insightface_face(50, 25, 110, 100, 0.9)])
+    face_analyzer = FaceAnalyzer(face_analysis=fake_face_analysis)
+    image = numpy.zeros((3000, 4000, 3), dtype=numpy.uint8)
+
+    detected_faces = face_analyzer.analyze(image)
+
+    # 모델에는 줄인 사진이 들어가고, 결과 좌표는 원본 기준으로 돌아와야 함
+    assert fake_face_analysis.received_image_shapes == [(1500, 2000, 3)]
+    assert [face.bounding_box for face in detected_faces] == [{"x": 100, "y": 50, "w": 120, "h": 150}]
+
+
+def test_analyzer_drops_low_quality_faces():
+    fake_face_analysis = FakeFaceAnalysis([
+        build_fake_insightface_face(0, 0, 100, 100, 0.9),   # 통과
+        build_fake_insightface_face(0, 0, 100, 100, 0.3),   # 점수 낮음
+        build_fake_insightface_face(0, 0, 20, 20, 0.9),     # 너무 작음
+    ])
+    face_analyzer = FaceAnalyzer(face_analysis=fake_face_analysis)
+
+    detected_faces = face_analyzer.analyze(numpy.zeros((500, 500, 3), dtype=numpy.uint8))
+
+    assert len(detected_faces) == 1
+
+
+def test_analyzer_returns_empty_list_when_no_face_found():
+    # 풍경 사진처럼 얼굴이 없는 사진도 정상 처리 (실패가 아님)
+    face_analyzer = FaceAnalyzer(face_analysis=FakeFaceAnalysis([]))
+
+    detected_faces = face_analyzer.analyze(numpy.zeros((500, 500, 3), dtype=numpy.uint8))
+
+    assert detected_faces == []
