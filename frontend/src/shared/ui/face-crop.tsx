@@ -1,9 +1,9 @@
 import { UserRoundIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { calculateFaceCropDrawing, type FaceBoundingBox } from '@/shared/lib/face-crop-geometry'
 import { cn } from '@/shared/lib/utils'
 
-/** 원본 사진 안에서 얼굴 위치 (API의 bbox, 서버에 저장된 이미지 기준 픽셀) */
-export type FaceBoundingBox = { x: number; y: number; w: number; h: number }
+export type { FaceBoundingBox }
 
 type FaceCropProps = {
   imageUrl: string
@@ -17,8 +17,12 @@ type FaceCropProps = {
   className?: string
 }
 
-// 서버가 잘린 얼굴 이미지를 주지 않으므로(원본 URL + bbox), CSS transform으로 얼굴 부분만 동그랗게 보여 준다.
-// 원본의 전체 크기를 몰라도 되도록 이미지를 원래 크기로 두고 '옮긴 뒤 확대'한다.
+/** 화면에 들어오기 이만큼 전에 미리 불러온다 */
+const preloadMargin = '200px'
+
+// 서버가 잘린 얼굴 이미지를 주지 않으므로(원본 URL + bbox), 원본을 받아 얼굴 둘레만 작은 캔버스에 그려 동그랗게 보여 준다.
+// 원본을 화면에 그대로 두고 CSS로 줄이면 아이폰 사파리가 원본 크기 레이어를 얼굴마다 들고 있다가
+// 메모리가 모자라 일부를 비워 버린다(8단계 아이폰 확인). 캔버스는 지름×화면 배율 크기만 남는다
 export function FaceCrop({
   imageUrl,
   faceBox,
@@ -27,18 +31,89 @@ export function FaceCrop({
   onImageError,
   className,
 }: FaceCropProps) {
-  // 불러오기 결과를 주소와 함께 기억한다. 주소가 바뀌면(만료 후 새 주소) 자동으로 '불러오는 중'으로 돌아간다
+  const containerRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  // 화면 근처에 온 적이 있는지. IntersectionObserver가 없는 환경은 바로 불러온다
+  const [isNearViewport, setIsNearViewport] = useState(
+    () => typeof IntersectionObserver === 'undefined',
+  )
+  // 그리기 결과를 주소와 함께 기억한다. 주소가 바뀌면(만료 후 새 주소) 자동으로 '불러오는 중'으로 돌아간다
   const [loadResult, setLoadResult] = useState<{ url: string; status: 'loaded' | 'failed' }>()
   const loadState = loadResult?.url === imageUrl ? loadResult.status : 'loading'
+  // 오류 알림은 최신 함수를 쓰되, 바뀌어도 다시 불러오지 않게 ref로 둔다
+  const onImageErrorRef = useRef(onImageError)
+  useEffect(() => {
+    onImageErrorRef.current = onImageError
+  }, [onImageError])
 
-  // 얼굴 중심을 기준으로, 얼굴보다 조금 큰 정사각형 영역을 잘라 낼 위치와 확대 비율을 계산한다
-  const cropSide = Math.max(faceBox.w, faceBox.h) * marginRatio
-  const cropLeft = faceBox.x + faceBox.w / 2 - cropSide / 2
-  const cropTop = faceBox.y + faceBox.h / 2 - cropSide / 2
-  const scale = size / cropSide
+  // 썸네일이 없어 원본을 받으므로, 화면 가까이 온 얼굴만 불러와 데이터를 아낀다
+  useEffect(() => {
+    const container = containerRef.current
+    if (isNearViewport || !container) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setIsNearViewport(true)
+      },
+      { rootMargin: preloadMargin },
+    )
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [isNearViewport])
+
+  // 원본을 받아 얼굴 둘레만 캔버스에 그리고, 원본은 바로 놓아준다
+  useEffect(() => {
+    if (!isNearViewport) return
+    let isCancelled = false
+    const image = new Image()
+    image.decoding = 'async'
+    image.onload = () => {
+      const canvas = canvasRef.current
+      const context = canvas?.getContext('2d')
+      if (isCancelled || !canvas || !context) return
+      // 화면 배율(레티나 2~3배)만큼 크게 그려야 흐리지 않다
+      const outputSize = Math.round(size * Math.min(window.devicePixelRatio || 1, 3))
+      canvas.width = outputSize
+      canvas.height = outputSize
+      const drawing = calculateFaceCropDrawing({
+        faceBox,
+        marginRatio,
+        imageWidth: image.naturalWidth,
+        imageHeight: image.naturalHeight,
+        outputSize,
+      })
+      if (drawing.sourceWidth > 0 && drawing.sourceHeight > 0) {
+        context.drawImage(
+          image,
+          drawing.sourceX,
+          drawing.sourceY,
+          drawing.sourceWidth,
+          drawing.sourceHeight,
+          drawing.destinationX,
+          drawing.destinationY,
+          drawing.destinationWidth,
+          drawing.destinationHeight,
+        )
+      }
+      setLoadResult({ url: imageUrl, status: 'loaded' })
+    }
+    image.onerror = () => {
+      if (isCancelled) return
+      setLoadResult({ url: imageUrl, status: 'failed' })
+      onImageErrorRef.current?.()
+    }
+    image.src = imageUrl
+    return () => {
+      isCancelled = true
+      image.onload = null
+      image.onerror = null
+    }
+    // faceBox는 객체라 매번 새로 오므로 숫자 값으로 비교한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNearViewport, imageUrl, faceBox.x, faceBox.y, faceBox.w, faceBox.h, size, marginRatio])
 
   return (
     <div
+      ref={containerRef}
       className={cn('relative shrink-0 overflow-hidden rounded-full bg-placeholder', className)}
       style={{ width: size, height: size }}
     >
@@ -48,23 +123,11 @@ export function FaceCrop({
           <UserRoundIcon className="size-1/2 text-text-muted" aria-hidden="true" />
         </div>
       ) : (
-        <img
-          src={imageUrl}
-          alt=""
-          decoding="async"
-          // 썸네일이 없어 원본을 쓰므로, 화면에 보이는 얼굴만 불러와 데이터를 아낀다
-          loading="lazy"
-          onLoad={() => setLoadResult({ url: imageUrl, status: 'loaded' })}
-          onError={() => {
-            setLoadResult({ url: imageUrl, status: 'failed' })
-            onImageError?.()
-          }}
-          // max-w-none: Tailwind 기본값(max-width:100%)이 이미지를 줄여 좌표가 어긋나는 것을 막는다
-          className="absolute top-0 left-0 max-w-none origin-top-left transition-opacity duration-200"
-          style={{
-            opacity: loadState === 'loaded' ? 1 : 0,
-            transform: `scale(${scale}) translate(${-cropLeft}px, ${-cropTop}px)`,
-          }}
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className="size-full transition-opacity duration-200"
+          style={{ opacity: loadState === 'loaded' ? 1 : 0 }}
         />
       )}
     </div>
