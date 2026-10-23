@@ -1,9 +1,15 @@
 import { FlaskConicalIcon } from 'lucide-react'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EventStatusBadge } from '@/entities/event/event-status-badge'
+import { saveMyPersonIds } from '@/entities/person/my-person-storage'
 import { joinEvent, loginAdministrator } from '@/entities/session/session-api'
 import { mockAdministratorAccount, mockSampleAccessCodes } from '@/mocks/mock-accounts'
-import { listMockEvents, resetMockDatabase, type MockEventSnapshot } from '@/mocks/mock-database'
+import {
+  listMockEvents,
+  resetMockDatabase,
+  toPersonId,
+  type MockEventSnapshot,
+} from '@/mocks/mock-database'
 import {
   getMockSettings,
   resetMockSettings,
@@ -180,6 +186,13 @@ export default function MockDevelopmentPanel() {
               >
                 정리 중인 행사로 입장
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => runQuickEntry(rememberSampleMyPersons)}
+              >
+                내 폴더 예시 저장(②-2)
+              </Button>
             </div>
             {quickEntryNotice && (
               <p role="status" className="text-small text-danger">
@@ -246,6 +259,13 @@ async function joinMockEvent(accessCode: string) {
   window.location.assign(
     join.status === 'open' ? paths.eventHome(accessCode) : paths.eventPreparing(accessCode),
   )
+}
+
+// 공개된 샘플 행사에 '내 폴더' 2개(사람 1·3)를 기억시키고 사람별 사진을 연다. 셀카 흐름(5단계) 전에 ②-2를 확인하려고 둔다
+async function rememberSampleMyPersons() {
+  const sampleEventId = 1
+  saveMyPersonIds(sampleEventId, [toPersonId(sampleEventId, 1), toPersonId(sampleEventId, 3)])
+  await joinMockEvent(mockSampleAccessCodes.open)
 }
 
 // 패널의 묶음 하나: 제목 + (설명) + 내용
