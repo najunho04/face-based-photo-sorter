@@ -28,9 +28,9 @@ export const paths = {
   /** ⑤ 고른 사람들의 사진 합쳐 보기 */
   eventPhotos: (accessCode: string, personIds: number[]) =>
     `/e/${encodeSegment(accessCode)}/photos?persons=${personIds.join(',')}`,
-  /** ⑥ 사진 크게 보기 */
-  eventPhoto: (accessCode: string, photoId: number) =>
-    `/e/${encodeSegment(accessCode)}/photos/${encodeSegment(photoId)}`,
+  /** ⑥ 사진 크게 보기. sourceQuery는 어떤 목록에서 열었는지(viewerSourceToQuery, 예: 'persons=3,12') */
+  eventPhoto: (accessCode: string, photoId: number, sourceQuery?: string) =>
+    `/e/${encodeSegment(accessCode)}/photos/${encodeSegment(photoId)}${sourceQuery ? `?${sourceQuery}` : ''}`,
 
   /** A1 관리자 로그인. next가 있으면 로그인 뒤 그 화면으로 돌아간다 */
   administratorLogin: (nextPath?: string) =>

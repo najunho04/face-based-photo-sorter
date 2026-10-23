@@ -3,6 +3,7 @@ import { ChevronLeftIcon, ImageOffIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { PhotoGrid, PhotoThumbnail } from '@/entities/photo/photo-grid'
 import { eventPhotosInfiniteQueryOptions } from '@/entities/photo/photo-queries'
+import { viewerSourceToQuery } from '@/entities/photo/viewer-source'
 import { useCurrentParticipantSession } from '@/entities/session/participant-session'
 import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
 import { getErrorMessage } from '@/shared/api/error-messages'
@@ -74,7 +75,11 @@ export default function AllPhotosPage() {
               <PhotoThumbnail
                 key={photo.photoId}
                 imageUrl={photo.url}
-                to={paths.eventPhoto(session.accessCode, photo.photoId)}
+                to={paths.eventPhoto(
+                  session.accessCode,
+                  photo.photoId,
+                  viewerSourceToQuery({ kind: 'all' }),
+                )}
                 label={`사진 ${index + 1}`}
                 onImageError={refetchOnImageError}
               />
