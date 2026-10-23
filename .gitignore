@@ -10,3 +10,7 @@
 .idea/
 .DS_Store
 Thumbs.db
+
+# 개인 작업용 문서 (각자 로컬에서 관리)
+CLAUDE.md
+roadmap.md

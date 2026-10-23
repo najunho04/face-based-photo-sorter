@@ -26,10 +26,15 @@ uv run pytest                # 테스트
   - 큐 규칙(작업 잡기, 실패·복구)은 `docs/erd.md`의 "워커 큐 규칙" 참고
 - **DB 접근**: SQLAlchemy ORM으로 통일 (`backend/database/`에 모델 공용으로 둠). 스키마 자체는 migrations SQL이 기준이에요.
 - **같이 정할 것**: NAS 저장 경로 규칙, 얼굴 분석 함수 모양(이미지 → bbox·embedding 목록)
-- **규칙**: `CLAUDE.md` 꼭 읽어 주세요 (풀네임 변수, 주석 1~2줄, TDD). 상대 담당 폴더는 수정하지 말고 요청하기.
+- **규칙**
+  - 변수·함수 이름은 축약 없이 풀네임 (`img` → `image`, `emb` → `embedding`)
+  - 코드마다 무엇을·왜 하는지 주석 1~2줄
+  - TDD: 실패하는 테스트 먼저 → 최소 구현 → 리팩터링
+  - 도메인당 브랜치 `feature/<도메인 폴더명>` (예: `feature/extraction`), main 직접 커밋 금지
+  - 상대 담당 폴더는 수정하지 말고 요청하기
+- **CLAUDE.md**: 저장소에는 올리지 않고 각자 로컬에서 관리해요 (`.gitignore`).
 
 ## 문서
 
-- [CLAUDE.md](CLAUDE.md) — 프로젝트 요약·디렉토리·규칙
 - [docs/api.md](docs/api.md) — API 명세·에러코드
 - [docs/erd.md](docs/erd.md) — DB 스키마·워커 큐 규칙
