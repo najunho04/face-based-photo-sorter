@@ -1,21 +1,142 @@
-import { useParams } from 'react-router'
+import { useQuery } from '@tanstack/react-query'
+import { CameraIcon, UsersRoundIcon } from 'lucide-react'
+import { Link } from 'react-router'
+import { readMyPersonIds } from '@/entities/person/my-person-storage'
+import { PersonFaceTile } from '@/entities/person/person-face-tile'
+import { personListQueryOptions } from '@/entities/person/person-queries'
+import { useCurrentParticipantSession } from '@/entities/session/participant-session'
+import { MyPhotosShortcut } from '@/pages/participant/my-photos-shortcut'
+import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
+import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
-import { PagePlaceholder } from '@/pages/page-placeholder'
+import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
+import { AppLogo } from '@/shared/ui/app-logo'
+import { Button } from '@/shared/ui/button'
+import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
+import { Skeleton } from '@/shared/ui/skeleton'
 
-// 공개된 행사의 첫 화면(사람별 폴더 격자). 4단계에서 실제 화면으로 바꾼다
+/** 참가자 화면은 사진 2장 이상 나온 사람만 보여 준다(배경에 한 번 지나간 사람 숨김, 결정 기록) */
+const participantMinimumPhotos = 2
+
+// ② 사람별 사진 (시안 ②, ②-2, PC P2): 공개된 행사의 첫 화면.
+// 내 폴더를 기억해 두었으면 ②-2 바로가기를, 아니면 '셀카로 내 사진 빨리 찾기'를 크게 보여 준다
 export default function HomePage() {
-  const { code = '' } = useParams()
+  const session = useCurrentParticipantSession()
+  const personsQuery = useQuery(
+    personListQueryOptions({
+      eventId: session.eventId,
+      minPhotos: participantMinimumPhotos,
+      requester: 'participant',
+    }),
+  )
+  useEventNotReadyRedirect(personsQuery.error, session)
+  const refetchOnImageError = useRefetchOnImageError(personsQuery.refetch)
+  const myPersonIds = readMyPersonIds(session.eventId)
+  const hasMyPersons = myPersonIds.length > 0
+
   return (
-    <PagePlaceholder
-      screenName="② 사람별 사진"
-      plannedStep={4}
-      links={[
-        { label: '⑦ 전체 사진', to: paths.eventAllPhotos(code) },
-        { label: '③ 셀카 촬영', to: paths.eventCamera(code) },
-        { label: '④ 후보 선택', to: paths.eventCandidates(code) },
-        { label: '⑤ 내 사진 (예: 사람 2명 합치기)', to: paths.eventPhotos(code, [3, 12]) },
-        { label: '⑥ 크게 보기 (예: 사진 1장)', to: paths.eventPhoto(code, 7) },
-      ]}
-    />
+    <div className="flex flex-col pb-[calc(env(safe-area-inset-bottom)+32px)] lg:pb-12">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
+        <AppLogo size="medium" />
+      </div>
+
+      <div className="flex flex-col gap-5 px-5 pt-5 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between lg:px-6 lg:pt-10">
+        <div className="flex flex-col gap-1">
+          {/* 휴대폰은 행사 이름이 제목, PC는 머리글에 행사 이름이 있으므로 '사람별 사진'이 제목 */}
+          <h1 className="text-title-1 lg:text-display">
+            <span className="lg:hidden">{session.eventName}</span>
+            <span className="hidden lg:inline">사람별 사진</span>
+          </h1>
+          <p className="text-small text-muted-foreground lg:text-[15px]">
+            {personsQuery.data
+              ? `사진 2장 이상 나온 사람 ${personsQuery.data.total}명 · 사진 많은 순`
+              : '사진 많은 순'}
+          </p>
+        </div>
+        {!hasMyPersons && (
+          <Button asChild size="lg">
+            <Link to={paths.eventCamera(session.accessCode)}>
+              <CameraIcon />
+              셀카로 내 사진 빨리 찾기
+            </Link>
+          </Button>
+        )}
+      </div>
+
+      {hasMyPersons && (
+        <div className="px-5 pt-5 lg:max-w-[560px] lg:px-6">
+          <MyPhotosShortcut
+            eventId={session.eventId}
+            accessCode={session.accessCode}
+            myPersonIds={myPersonIds}
+            persons={personsQuery.data?.persons}
+            onImageError={refetchOnImageError}
+          />
+        </div>
+      )}
+
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 lg:hidden">
+        <h2 className="text-headline">사람별 사진</h2>
+        <Link
+          to={paths.eventAllPhotos(session.accessCode)}
+          className="flex min-h-11 items-center text-small font-semibold text-primary"
+        >
+          전체 사진 보기
+        </Link>
+      </div>
+
+      <div className="px-5 lg:px-6 lg:pt-7">
+        {personsQuery.isPending ? (
+          <PersonGridSkeleton />
+        ) : personsQuery.isError ? (
+          <ErrorState
+            title="사람별 사진을 불러오지 못했어요"
+            description={getErrorMessage(personsQuery.error)}
+            onRetry={() => void personsQuery.refetch()}
+          />
+        ) : personsQuery.data.persons.length === 0 ? (
+          <EmptyState
+            icon={UsersRoundIcon}
+            title="아직 2장 이상 나온 사람이 없어요"
+            description="전체 사진에서 직접 찾아보세요."
+            action={
+              <Button asChild variant="secondary">
+                <Link to={paths.eventAllPhotos(session.accessCode)}>전체 사진 보기</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="grid grid-cols-3 gap-3 lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:gap-4">
+            {personsQuery.data.persons.map((person) => (
+              <li key={person.personId}>
+                <PersonFaceTile
+                  person={person}
+                  to={paths.eventPhotos(session.accessCode, [person.personId])}
+                  onImageError={refetchOnImageError}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// 사람 목록을 불러오는 동안 같은 모양의 회색 동그라미로 자리를 잡는다(화면이 들썩이지 않게)
+function PersonGridSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="grid grid-cols-3 gap-3 lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:gap-4"
+    >
+      {Array.from({ length: 12 }, (_, index) => (
+        <div key={index} className="flex flex-col items-center gap-1.5 py-1.5 lg:py-4">
+          <Skeleton className="size-22 rounded-full lg:size-24" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+      ))}
+    </div>
   )
 }
