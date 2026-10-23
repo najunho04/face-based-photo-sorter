@@ -1,6 +1,7 @@
 import { FlaskConicalIcon } from 'lucide-react'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EventStatusBadge } from '@/entities/event/event-status-badge'
+import { addRecentEvent } from '@/entities/event/recent-event-storage'
 import { saveMyPersonIds } from '@/entities/person/my-person-storage'
 import { joinEvent, loginAdministrator } from '@/entities/session/session-api'
 import { mockAdministratorAccount, mockSampleAccessCodes } from '@/mocks/mock-accounts'
@@ -252,6 +253,8 @@ async function signInAsMockAdministrator() {
     expiresInSeconds: login.expiresIn,
     loginId: mockAdministratorAccount.loginId,
   })
+  // 최근 행사는 이 기기에 남긴 목록이라, 가짜 서버의 행사를 넣어 둔다(뒤에서부터 넣어 행사 1이 맨 앞)
+  for (const mockEvent of listMockEvents().reverse()) addRecentEvent(mockEvent.eventId)
   window.location.assign(paths.administratorEvents)
 }
 
