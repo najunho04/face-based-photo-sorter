@@ -35,7 +35,11 @@ afterAll(() => server.close())
 // 관리자로 로그인해 토큰을 저장한다
 async function signInAsAdministrator() {
   const login = await loginAdministrator(mockAdministratorAccount)
-  saveAdministratorSession({ accessToken: login.accessToken, expiresInSeconds: login.expiresIn })
+  saveAdministratorSession({
+    accessToken: login.accessToken,
+    expiresInSeconds: login.expiresIn,
+    loginId: mockAdministratorAccount.loginId,
+  })
 }
 
 // 인증코드로 입장해 참가자 토큰을 저장하고 행사 번호를 돌려준다
@@ -46,6 +50,7 @@ async function joinAsParticipant(accessCode: string) {
     eventId: join.eventId,
     eventName: join.eventName,
     accessCode,
+    isEventOpen: join.status === 'open',
   })
   return join
 }

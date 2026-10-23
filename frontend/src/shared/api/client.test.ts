@@ -85,12 +85,17 @@ describe('requestApi 토큰', () => {
         return HttpResponse.json(successBody(null))
       }),
     )
-    saveAdministratorSession({ accessToken: 'administrator-token', expiresInSeconds: 3600 })
+    saveAdministratorSession({
+      accessToken: 'administrator-token',
+      expiresInSeconds: 3600,
+      loginId: 'admin',
+    })
     saveParticipantSession({
       accessToken: 'participant-token',
       eventId: 1,
       eventName: '행사',
       accessCode: 'A7K2Q9',
+      isEventOpen: true,
     })
 
     await requestApi('/api/admin/thing', { requester: 'administrator' })
@@ -111,6 +116,7 @@ describe('requestApi 토큰', () => {
       eventId: 1,
       eventName: '행사',
       accessCode: 'A7K2Q9',
+      isEventOpen: true,
     })
 
     await requestApi('/api/events/1/persons', { requester: 'participant' })
@@ -131,6 +137,7 @@ describe('requestApi 토큰', () => {
       eventId: 1,
       eventName: '행사',
       accessCode: 'A7K2Q9',
+      isEventOpen: true,
     })
 
     await requestApi('/api/events/join', { method: 'POST', requester: 'anonymous' })
