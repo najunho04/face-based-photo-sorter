@@ -66,7 +66,15 @@ export function FaceCrop({
     let isCancelled = false
     const image = new Image()
     image.decoding = 'async'
+    // 받은 원본을 미리 해독해 둔 뒤 그린다. 바로 drawImage를 부르면 2000px 사진 해독을 메인 스레드에서
+    // 그 자리에서 하느라 얼굴이 여럿 그려질 때 스크롤이 끊긴다(decode를 못 하는 경우에도 그리기는 한다)
     image.onload = () => {
+      void image
+        .decode()
+        .catch(() => {})
+        .then(drawFaceCrop)
+    }
+    const drawFaceCrop = () => {
       const canvas = canvasRef.current
       const context = canvas?.getContext('2d')
       if (isCancelled || !canvas || !context) return

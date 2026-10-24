@@ -68,13 +68,40 @@ export async function prepareShareFiles(
   return files
 }
 
-// 사진 한 장을 다운로드한다. 저장 주소는 서버가 '파일로 받기' 헤더를 붙여 주므로 링크를 누른 것처럼 연다
-export function startPhotoDownload(photo: SavablePhoto): void {
+/** Blob 임시 주소를 지우기 전에 기다리는 시간. 바로 지우면 일부 브라우저가 내려받기를 시작하지 못한다 */
+const objectUrlRevokeDelayMilliseconds = 10_000
+
+// 주소를 링크로 눌러 파일 이름과 함께 내려받기를 시작한다
+function clickDownloadLink(href: string, fileName: string): void {
   const link = document.createElement('a')
-  link.href = photo.downloadUrl ?? photo.url
-  link.download = toJpegFileName(photo.fileName)
+  link.href = href
+  link.download = toJpegFileName(fileName)
   link.rel = 'noopener'
   document.body.append(link)
   link.click()
   link.remove()
+}
+
+// 사진 한 장을 내려받는다.
+// - 저장 주소(downloadUrl)는 서버가 '파일로 받기' 헤더를 붙여 주므로 링크를 누른 것처럼 연다
+// - 저장 주소가 없으면(⑦) 다른 도메인의 보기 주소라 download 속성이 무시되고 화면이 이미지로 넘어가므로,
+//   사진을 받아 이 화면의 Blob 임시 주소로 내려받는다(사진 저장소 CORS 필요, 계획 문서 8장)
+export async function downloadPhoto(
+  photo: SavablePhoto,
+  {
+    fetchImage = fetchImageBlob,
+    signal,
+  }: {
+    fetchImage?: (imageUrl: string, signal?: AbortSignal) => Promise<Blob>
+    signal?: AbortSignal
+  } = {},
+): Promise<void> {
+  if (photo.downloadUrl) {
+    clickDownloadLink(photo.downloadUrl, photo.fileName)
+    return
+  }
+  const imageBlob = await fetchImage(photo.url, signal)
+  const objectUrl = URL.createObjectURL(imageBlob)
+  clickDownloadLink(objectUrl, photo.fileName)
+  setTimeout(() => URL.revokeObjectURL(objectUrl), objectUrlRevokeDelayMilliseconds)
 }

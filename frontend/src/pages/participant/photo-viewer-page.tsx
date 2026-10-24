@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeftIcon, ChevronRightIcon, DownloadIcon, ShareIcon, XIcon } from 'lucide-react'
-import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useMergedPersonPhotos } from '@/entities/person/use-merged-person-photos'
@@ -12,7 +12,7 @@ import {
   type ViewerSource,
 } from '@/entities/photo/viewer-source'
 import { useCurrentParticipantSession } from '@/entities/session/participant-session'
-import { startPhotoDownload, type SavablePhoto } from '@/features/photo-selection/photo-save-steps'
+import { downloadPhoto, type SavablePhoto } from '@/features/photo-selection/photo-save-steps'
 import { SaveProgressSheet } from '@/features/photo-selection/save-progress-sheet'
 import { canShareImageFiles, detectSaveMethod } from '@/features/photo-selection/save-method'
 import { usePhotoSaver } from '@/features/photo-selection/use-photo-saver'
@@ -183,12 +183,20 @@ function ViewerCarousel({
 }: ViewerCarouselProps) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  // Embla 옵션은 바뀌지 않게 둔다. 옵션이 바뀌면 Embla가 다시 초기화하고, 그때 옵션의 startIndex로 돌아간다.
+  // 그래서 시작 위치는 처음 값으로 고정하고(넘길 때마다 initialIndex가 바뀜), 확대 여부는 ref로 읽는다
+  const [startIndex] = useState(initialIndex)
+  const isZoomedRef = useRef(false)
+  useEffect(() => {
+    isZoomedRef.current = isZoomed
+  }, [isZoomed])
+  // 확대 중에는 끌기를 확대 이동에 양보한다(true를 돌려줄 때만 Embla가 끌기를 처리)
+  const allowDragWhenNotZoomed = useCallback(() => !isZoomedRef.current, [])
   // 동작 줄이기가 켜져 있으면 넘길 때 미끄러지지 않고 바로 다음 사진으로 바뀐다(Embla duration 0 = 즉시 이동)
   const prefersReducedMotion = useMediaQuery(reducedMotionMediaQuery)
   const [carouselRef, carouselApi] = useEmblaCarousel({
-    startIndex: initialIndex,
-    // 확대 중에는 끌기를 확대 이동에 양보한다
-    watchDrag: !isZoomed,
+    startIndex,
+    watchDrag: allowDragWhenNotZoomed,
     duration: prefersReducedMotion ? 0 : 22,
   })
   const [isZoomTipVisible, setIsZoomTipVisible] = useState(true)
@@ -235,8 +243,12 @@ function ViewerCarousel({
   async function saveCurrentPhoto(purpose: 'save' | 'share') {
     if (!currentPhoto) return
     if (purpose === 'save' && saveMethod === 'download') {
-      startPhotoDownload(currentPhoto)
-      toast.success('사진을 저장했어요')
+      try {
+        await downloadPhoto(currentPhoto)
+        toast.success('사진을 저장했어요')
+      } catch {
+        toast.error('사진을 받지 못했어요. 잠시 후 다시 시도해주세요.')
+      }
       return
     }
     if (prefetchedFile) {

@@ -211,3 +211,77 @@ describe('UploadQueue 추가·취소', () => {
     expect(receivedSignal?.aborted).toBe(true)
   })
 })
+
+describe('UploadQueue 보내는 파일 이름', () => {
+  // 줄이면 확장자가 .jpg로 바뀌는 실제 준비 단계를 흉내 낸다
+  const prepareAsJpeg = async (file: File) =>
+    new File([file], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' })
+
+  it('줄인 뒤 이름이 겹치면 뒤 사진 이름을 바꿔 보내고, 서버가 하나만 거절하면 그 사진만 실패', async () => {
+    const sentNames: string[] = []
+    const queue = createTestQueue({
+      prepareFile: prepareAsJpeg,
+      uploadBatch: async (files) => {
+        sentNames.push(...files.map((file) => file.name))
+        return { uploaded: 1, failed: [{ fileName: 'a (2).jpg', reason: 'UNSUPPORTED_FILE' }] }
+      },
+    })
+
+    // 폴더째 올리면 이름이 같은 사진, 줄이면 이름이 같아지는 사진(a.png → a.jpg)이 함께 들어온다
+    queue.add([
+      new File(['1'], 'a.jpg', { type: 'image/jpeg', lastModified: 1 }),
+      new File(['22'], 'a.png', { type: 'image/png', lastModified: 2 }),
+    ])
+    await queue.waitUntilIdle()
+
+    expect(sentNames).toEqual(['a.jpg', 'a (2).jpg'])
+    expect(queue.getSnapshot().items.map((item) => [item.fileName, item.status])).toEqual([
+      ['a.jpg', 'done'],
+      ['a.png', 'failed'],
+    ])
+  })
+
+  it('다른 묶음에서도 이미 쓴 이름은 쓰지 않는다', async () => {
+    const sentNames: string[] = []
+    const queue = createTestQueue({
+      prepareFile: prepareAsJpeg,
+      uploadBatch: async (files) => {
+        sentNames.push(...files.map((file) => file.name))
+        return succeedAll(files)
+      },
+    })
+
+    queue.add([new File(['1'], 'IMG_0001.jpg', { type: 'image/jpeg', lastModified: 1 })])
+    await queue.waitUntilIdle()
+    queue.add([new File(['22'], 'IMG_0001.jpg', { type: 'image/jpeg', lastModified: 2 })])
+    await queue.waitUntilIdle()
+
+    expect(sentNames).toEqual(['IMG_0001.jpg', 'IMG_0001 (2).jpg'])
+  })
+
+  it('다시 보낼 때는 처음 줄인 파일을 그대로 쓴다(다시 줄이지 않음)', async () => {
+    const prepareFile = vi.fn(prepareAsJpeg)
+    const sentNames: string[][] = []
+    let callCount = 0
+    const queue = createTestQueue({
+      prepareFile,
+      uploadBatch: async (files) => {
+        callCount += 1
+        sentNames.push(files.map((file) => file.name))
+        if (callCount === 1)
+          throw new ApiError({ code: 'NETWORK_ERROR', status: null, serverMessage: null })
+        return succeedAll(files)
+      },
+    })
+
+    queue.add(createFiles(2))
+    await queue.waitUntilIdle()
+
+    expect(prepareFile).toHaveBeenCalledTimes(2)
+    expect(sentNames).toEqual([
+      ['IMG_1.jpg', 'IMG_2.jpg'],
+      ['IMG_1.jpg', 'IMG_2.jpg'],
+    ])
+    expect(queue.getSnapshot()).toMatchObject({ doneCount: 2, failedCount: 0 })
+  })
+})

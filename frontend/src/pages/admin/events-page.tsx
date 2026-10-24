@@ -25,7 +25,7 @@ export default function EventsPage() {
   const [recentEventIds, setRecentEventIds] = useState(readRecentEventIds)
   const progressQueries = useQueries({
     queries: recentEventIds.map((eventId) =>
-      eventProgressQueryOptions(eventId, recentEventPollingMilliseconds),
+      eventProgressQueryOptions(eventId, { pollingMilliseconds: recentEventPollingMilliseconds }),
     ),
   })
 

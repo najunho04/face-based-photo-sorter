@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { BellIcon, LoaderCircleIcon, QrCodeIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { EventProgressSteps } from '@/entities/event/event-progress-steps'
@@ -11,6 +11,7 @@ import {
   AdministratorPageBody,
   AdministratorPageHeader,
 } from '@/pages/admin/administrator-page-header'
+import { markTitleAsCompleted, showCompletionNotification } from '@/pages/admin/completion-alert'
 import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
 import { Button } from '@/shared/ui/button'
@@ -26,12 +27,19 @@ const processingPollingMilliseconds = 3000
 export default function EventProcessingPage() {
   const eventId = Number(useParams().eventId)
   const navigate = useNavigate()
-  const progressQuery = useQuery(eventProgressQueryOptions(eventId, processingPollingMilliseconds))
+  const progressQuery = useQuery(
+    eventProgressQueryOptions(eventId, {
+      pollingMilliseconds: processingPollingMilliseconds,
+      pollsInBackground: true,
+    }),
+  )
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const notification = useCompletionNotificationPermission()
   const progress = progressQuery.data
   const isOpen = progress?.status === 'open'
   const eventName = progress?.name
+  // 다른 탭에 있을 때 완료를 알렸는지(화면이 다시 그려져도 알림·제목 표시를 한 번만 하려고)
+  const hasAlertedCompletionRef = useRef(false)
 
   // 공개되면: 보고 있으면 바로 A6으로, 다른 탭이면 알림을 보내고 돌아왔을 때 A6으로 간다
   useEffect(() => {
@@ -44,9 +52,15 @@ export default function EventProcessingPage() {
       goToResult()
       return
     }
-    document.title = `(완료) ${document.title}`
-    if (notification.permission === 'granted') {
-      new Notification('사진 정리가 끝났어요', { body: `${eventName} · 참가자에게 공개됐어요` })
+    if (!hasAlertedCompletionRef.current) {
+      hasAlertedCompletionRef.current = true
+      document.title = markTitleAsCompleted(document.title)
+      if (notification.permission === 'granted') {
+        showCompletionNotification({
+          title: '사진 정리가 끝났어요',
+          body: `${eventName} · 참가자에게 공개됐어요`,
+        })
+      }
     }
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') goToResult()

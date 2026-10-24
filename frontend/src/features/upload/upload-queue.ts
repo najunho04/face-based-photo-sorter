@@ -57,11 +57,19 @@ type UploadQueueOptions = {
 /** 다시 보내면 나아질 수 있는 오류(네트워크 끊김·시간 초과·서버 오류) */
 const retryableErrorCodes = new Set(['NETWORK_ERROR', 'TIMEOUT', 'INTERNAL_ERROR'])
 
-type QueueEntry = UploadItem & { file: File; duplicateKey: string }
+/** 대기열 안의 항목. preparedFile은 줄이고 겹치지 않는 이름을 붙인 파일(다시 보낼 때 그대로 씀) */
+type QueueEntry = UploadItem & { file: File; duplicateKey: string; preparedFile: File | null }
 
 // 같은 파일인지 알아보는 열쇠(이름·크기·수정 시각)
 function createDuplicateKey(file: File): string {
   return `${file.name}:${file.size}:${file.lastModified}`
+}
+
+// 이름 뒤에 번호를 붙인다: 'IMG_0001.jpg', 2 → 'IMG_0001 (2).jpg'
+function addNumberToFileName(fileName: string, number: number): string {
+  const extensionStart = fileName.lastIndexOf('.')
+  if (extensionStart <= 0) return `${fileName} (${number})`
+  return `${fileName.slice(0, extensionStart)} (${number})${fileName.slice(extensionStart)}`
 }
 
 export function createUploadQueue({
@@ -79,6 +87,33 @@ export function createUploadQueue({
   let nextItemNumber = 1
   let abortController = new AbortController()
   let idleWaiters: Array<() => void> = []
+  // 이 대기열에서 이미 보낸(보낼) 파일 이름. 서버 응답의 실패 목록이 이름으로만 오므로 겹치지 않게 한다
+  const usedUploadNames = new Set<string>()
+
+  // 겹치지 않는 보낼 이름을 정해 차지한다. 폴더째 올리거나 줄여서 확장자가 바뀌면 같은 이름이 생긴다
+  function claimUniqueUploadName(fileName: string): string {
+    let uniqueName = fileName
+    for (let number = 2; usedUploadNames.has(uniqueName); number += 1) {
+      uniqueName = addNumberToFileName(fileName, number)
+    }
+    usedUploadNames.add(uniqueName)
+    return uniqueName
+  }
+
+  // 사진을 줄이고 겹치지 않는 이름을 붙인다. 한 번 준비한 파일은 다시 보낼 때 그대로 쓴다
+  async function getPreparedFile(entry: QueueEntry): Promise<File> {
+    if (entry.preparedFile) return entry.preparedFile
+    const preparedFile = await prepareFile(entry.file)
+    const uploadName = claimUniqueUploadName(preparedFile.name)
+    entry.preparedFile =
+      uploadName === preparedFile.name
+        ? preparedFile
+        : new File([preparedFile], uploadName, {
+            type: preparedFile.type,
+            lastModified: preparedFile.lastModified,
+          })
+    return entry.preparedFile
+  }
 
   function getSnapshot(): UploadSnapshot {
     const items = entries.map((entry) => ({
@@ -142,7 +177,7 @@ export function createUploadQueue({
     for (const entry of batchEntries) {
       if (signal.aborted) return
       try {
-        preparedFiles.push({ entry, file: await prepareFile(entry.file) })
+        preparedFiles.push({ entry, file: await getPreparedFile(entry) })
       } catch (error) {
         markFailed(
           [entry],
@@ -165,7 +200,7 @@ export function createUploadQueue({
         preparedFiles.map(({ file }) => file),
         signal,
       )
-      // 서버가 거절한 파일만 실패로, 나머지는 완료
+      // 서버가 거절한 파일만 실패로, 나머지는 완료(보낸 이름이 겹치지 않으므로 이름으로 찾는다)
       preparedFiles.forEach(({ entry, file }) => {
         const rejection = result.failed.find((failure) => failure.fileName === file.name)
         entry.status = rejection ? 'failed' : 'done'
@@ -207,6 +242,7 @@ export function createUploadQueue({
           attemptCount: 0,
           file,
           duplicateKey,
+          preparedFile: null,
         })
         addedCount += 1
       }

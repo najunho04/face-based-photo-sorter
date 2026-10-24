@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  downloadPhoto,
   prepareShareFiles,
   runSequentially,
-  startPhotoDownload,
   type SavablePhoto,
 } from '@/features/photo-selection/photo-save-steps'
 import {
@@ -49,22 +49,36 @@ export function usePhotoSaver() {
     abortControllerRef.current = abortController
     const totalCount = photos.length
     setProgress({ status: 'working', purpose, method: 'download', completedCount: 0, totalCount })
-    const completedCount = await runSequentially(
-      photos,
-      async (photo) => startPhotoDownload(photo),
-      {
+    // 중간에 실패해도 몇 장까지 받았는지 알 수 있도록 진행할 때마다 기억한다
+    let completedCount = 0
+    let hasFailed = false
+    try {
+      await runSequentially(photos, (photo, signal) => downloadPhoto(photo, { signal }), {
         signal: abortController.signal,
-        onProgress: (count) =>
+        onProgress: (count) => {
+          completedCount = count
           setProgress({
             status: 'working',
             purpose,
             method: 'download',
             completedCount: count,
             totalCount,
-          }),
-      },
-    )
+          })
+        },
+      })
+    } catch {
+      // 사용자가 멈춘 경우는 실패로 알리지 않는다
+      hasFailed = !abortController.signal.aborted
+    }
     setProgress({ status: 'idle' })
+    if (hasFailed) {
+      toast.error(
+        completedCount > 0
+          ? `사진 ${completedCount}장까지 저장했어요. 나머지는 받지 못했어요. 다시 시도해주세요.`
+          : '사진을 받지 못했어요. 잠시 후 다시 시도해주세요.',
+      )
+      return
+    }
     if (completedCount > 0) toast.success(`사진 ${completedCount}장을 저장했어요`)
   }, [])
 
