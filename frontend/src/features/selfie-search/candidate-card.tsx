@@ -44,8 +44,8 @@ export function CandidateCard({
         )}
       >
         <FaceCrop
-          imageUrl={candidate.repFace.url}
-          faceBox={candidate.repFace.bbox}
+          imageUrl={candidate.repFace?.url ?? null}
+          faceBox={candidate.repFace?.bbox ?? null}
           size={isDesktop ? 140 : isNarrowPhone ? 76 : 92}
           onImageError={onImageError}
         />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateFaceCropDrawing } from '@/shared/lib/face-crop-geometry'
+import { calculateFaceCropDrawing, isDrawableFace } from '@/shared/lib/face-crop-geometry'
 
 describe('calculateFaceCropDrawing (원본에서 얼굴 둘레를 잘라 작은 캔버스에 그릴 위치)', () => {
   it('얼굴 중심으로 얼굴보다 여유(1.4배) 있는 정사각형을 잘라 캔버스 전체에 그린다', () => {
@@ -77,5 +77,28 @@ describe('calculateFaceCropDrawing (원본에서 얼굴 둘레를 잘라 작은 
       destinationWidth: 120,
       destinationHeight: 120,
     })
+  })
+})
+
+describe('isDrawableFace (대표 얼굴을 그릴 수 있는지)', () => {
+  const faceBox = { x: 10, y: 20, w: 30, h: 40 }
+
+  it('주소와 얼굴 위치가 모두 있으면 그릴 수 있다', () => {
+    expect(isDrawableFace('https://storage.example/1.jpg', faceBox)).toBe(true)
+  })
+
+  it('주소가 비어 있으면(null·빈 글자) 그릴 수 없다(백엔드가 주소를 아직 만들지 못한 경우)', () => {
+    expect(isDrawableFace(null, faceBox)).toBe(false)
+    expect(isDrawableFace(undefined, faceBox)).toBe(false)
+    expect(isDrawableFace('', faceBox)).toBe(false)
+  })
+
+  it('얼굴 위치가 없거나 크기가 0이면 그릴 수 없다', () => {
+    expect(isDrawableFace('https://storage.example/1.jpg', null)).toBe(false)
+    expect(isDrawableFace('https://storage.example/1.jpg', undefined)).toBe(false)
+    expect(isDrawableFace('https://storage.example/1.jpg', { ...faceBox, w: 0 })).toBe(false)
+    expect(isDrawableFace('https://storage.example/1.jpg', { ...faceBox, h: Number.NaN })).toBe(
+      false,
+    )
   })
 })

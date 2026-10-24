@@ -61,8 +61,8 @@ export function MyPhotosShortcut({
             return person ? (
               <FaceCrop
                 key={personId}
-                imageUrl={person.repFace.url}
-                faceBox={person.repFace.bbox}
+                imageUrl={person.repFace?.url ?? null}
+                faceBox={person.repFace?.bbox ?? null}
                 size={48}
                 onImageError={onImageError}
                 className={overlapClassName}

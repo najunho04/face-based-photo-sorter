@@ -1,14 +1,20 @@
 import { UserRoundIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createConcurrencyLimiter } from '@/shared/lib/concurrency-limiter'
-import { calculateFaceCropDrawing, type FaceBoundingBox } from '@/shared/lib/face-crop-geometry'
+import {
+  calculateFaceCropDrawing,
+  isDrawableFace,
+  type FaceBoundingBox,
+} from '@/shared/lib/face-crop-geometry'
 import { cn } from '@/shared/lib/utils'
 
 export type { FaceBoundingBox }
 
 type FaceCropProps = {
-  imageUrl: string
-  faceBox: FaceBoundingBox
+  /** 원본 사진 주소. 백엔드가 주소를 만들지 못하면 null로 온다(그때는 사람 아이콘) */
+  imageUrl: string | null
+  /** 얼굴 위치. 대표 얼굴이 없으면 null(그때는 사람 아이콘) */
+  faceBox: FaceBoundingBox | null
   /** 동그라미 지름(px). 후보 92, PC 후보 140, 사람별 사진 88 등 */
   size: number
   /** 얼굴 주변 여유 비율. 1.4면 얼굴 크기의 40%만큼 둘레를 더 보여 준다 */
@@ -43,7 +49,13 @@ export function FaceCrop({
   )
   // 그리기 결과를 주소와 함께 기억한다. 주소가 바뀌면(만료 후 새 주소) 자동으로 '불러오는 중'으로 돌아간다
   const [loadResult, setLoadResult] = useState<{ url: string; status: 'loaded' | 'failed' }>()
-  const loadState = loadResult?.url === imageUrl ? loadResult.status : 'loading'
+  // 주소나 얼굴 위치가 비어 있으면 불러오지 않고 바로 사람 아이콘을 보여 준다(목록 다시 받기도 하지 않음)
+  const hasDrawableFace = isDrawableFace(imageUrl, faceBox)
+  const loadState = !hasDrawableFace
+    ? 'failed'
+    : loadResult?.url === imageUrl
+      ? loadResult.status
+      : 'loading'
   // 오류 알림은 최신 함수를 쓰되, 바뀌어도 다시 불러오지 않게 ref로 둔다
   const onImageErrorRef = useRef(onImageError)
   useEffect(() => {
@@ -67,7 +79,7 @@ export function FaceCrop({
   // 원본을 받아 얼굴 둘레만 캔버스에 그리고, 원본은 바로 놓아준다.
   // 동시에 펼치는 원본 수는 제한한다(2000px 한 장을 펼치면 약 12MB, 첫 화면 얼굴 18개면 200MB 이상)
   useEffect(() => {
-    if (!isNearViewport) return
+    if (!isNearViewport || !imageUrl || !faceBox || !hasDrawableFace) return
     let isCancelled = false
     let releaseSlot = () => {}
     let stopLoading = () => {}
@@ -150,7 +162,17 @@ export function FaceCrop({
     }
     // faceBox는 객체라 매번 새로 오므로 숫자 값으로 비교한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNearViewport, imageUrl, faceBox.x, faceBox.y, faceBox.w, faceBox.h, size, marginRatio])
+  }, [
+    isNearViewport,
+    hasDrawableFace,
+    imageUrl,
+    faceBox?.x,
+    faceBox?.y,
+    faceBox?.w,
+    faceBox?.h,
+    size,
+    marginRatio,
+  ])
 
   return (
     <div

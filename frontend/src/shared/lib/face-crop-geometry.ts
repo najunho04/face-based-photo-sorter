@@ -56,3 +56,13 @@ export function calculateFaceCropDrawing({
     destinationHeight: sourceHeight * scale,
   }
 }
+
+// 대표 얼굴을 그릴 수 있는지: 사진 주소와 크기가 있는 얼굴 위치가 모두 있어야 한다.
+// 백엔드는 사진 주소를 아직 만들지 못했거나 대표 얼굴이 없으면 비워(null) 보낼 수 있다(셀카 매칭 PR)
+export function isDrawableFace(
+  imageUrl: string | null | undefined,
+  faceBox: FaceBoundingBox | null | undefined,
+): boolean {
+  if (!imageUrl || !faceBox) return false
+  return [faceBox.x, faceBox.y].every(Number.isFinite) && faceBox.w > 0 && faceBox.h > 0
+}

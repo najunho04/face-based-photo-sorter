@@ -46,6 +46,12 @@ const selfieMatchOptions: ChoiceOption<MockSettings['selfieMatchScenario']>[] = 
   { value: 'no-candidates', label: '후보 0명' },
   { value: 'face-not-detected', label: '얼굴 없음' },
 ]
+// 대표 얼굴 비우기: 실제 백엔드가 주소·대표 얼굴을 비워 보낼 때 화면이 깨지지 않는지 확인용
+const representativeFaceOptions: ChoiceOption<MockSettings['representativeFaceMode']>[] = [
+  { value: 'normal', label: '보통' },
+  { value: 'missing-url', label: '사진 주소 없음' },
+  { value: 'missing-face', label: '대표 얼굴 없음' },
+]
 const responseSpeedOptions: ChoiceOption<MockSettings['responseSpeed']>[] = [
   { value: 'normal', label: '보통' },
   { value: 'slow', label: '느리게 (2~3초)' },
@@ -120,6 +126,15 @@ export default function MockDevelopmentPanel() {
               options={selfieMatchOptions}
               selectedValue={settings.selfieMatchScenario}
               onSelect={(value) => updateMockSettings({ selfieMatchScenario: value })}
+            />
+          </PanelSection>
+
+          <PanelSection title="대표 얼굴">
+            <ChoiceGroup
+              label="대표 얼굴"
+              options={representativeFaceOptions}
+              selectedValue={settings.representativeFaceMode}
+              onSelect={(value) => updateMockSettings({ representativeFaceMode: value })}
             />
           </PanelSection>
 

@@ -30,17 +30,25 @@ const maximumSelfieBytes = 10 * 1024 * 1024
 // 사람 하나를 API 응답 모양(#8·#10)으로 바꾼다. 대표 얼굴은 원본 사진 주소 + 얼굴 위치
 function toApiPerson(event: MockEventSnapshot, person: MockPerson): Person {
   const representativePhoto = event.content!.photos[person.representative.photoNumber - 1]
+  const { representativeFaceMode } = getMockSettings()
   return {
     personId: toPersonId(event.eventId, person.personNumber),
     label: `user${person.personNumber}`,
     photoCount: person.photoNumbers.length,
-    repFace: {
-      url: createMockPhotoUrls(
-        toPhotoId(event.eventId, representativePhoto.photoNumber),
-        representativePhoto.fileName,
-      ).url,
-      bbox: person.representative.box,
-    },
+    // 패널의 '대표 얼굴 비우기' 설정이면 실제 백엔드처럼 주소나 대표 얼굴을 비워 보낸다
+    repFace:
+      representativeFaceMode === 'missing-face'
+        ? null
+        : {
+            url:
+              representativeFaceMode === 'missing-url'
+                ? null
+                : createMockPhotoUrls(
+                    toPhotoId(event.eventId, representativePhoto.photoNumber),
+                    representativePhoto.fileName,
+                  ).url,
+            bbox: person.representative.box,
+          },
   }
 }
 

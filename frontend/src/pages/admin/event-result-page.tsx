@@ -181,8 +181,8 @@ function PersonFolderCard({
       className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-background px-1.5 pt-3.5 pb-2.5 transition-colors outline-none hover:border-primary-border focus-visible:ring-2 focus-visible:ring-ring lg:gap-2 lg:px-3 lg:pt-4.5 lg:pb-3.5"
     >
       <FaceCrop
-        imageUrl={person.repFace.url}
-        faceBox={person.repFace.bbox}
+        imageUrl={person.repFace?.url ?? null}
+        faceBox={person.repFace?.bbox ?? null}
         size={isDesktop ? 76 : 64}
         onImageError={onImageError}
       />

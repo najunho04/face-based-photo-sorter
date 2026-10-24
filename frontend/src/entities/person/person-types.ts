@@ -5,15 +5,19 @@ import type { DownloadablePhoto } from '@/entities/photo/photo-types'
 /** 원본 사진 안에서 얼굴 위치(픽셀). w·h는 서버 필드 이름 */
 export type FaceBox = { x: number; y: number; w: number; h: number }
 
-/** 대표 얼굴: 잘린 이미지가 아니라 원본 URL + 얼굴 위치. 화면이 FaceCrop으로 잘라 보여 준다 */
-export type RepresentativeFace = { url: string; bbox: FaceBox }
+/**
+ * 대표 얼굴: 잘린 이미지가 아니라 원본 URL + 얼굴 위치. 화면이 FaceCrop으로 잘라 보여 준다.
+ * url은 백엔드가 사진 주소를 만들지 못하면 null로 온다(그때 화면은 사람 아이콘)
+ */
+export type RepresentativeFace = { url: string | null; bbox: FaceBox }
 
 /** 사람 폴더 하나. label은 'user3' 같은 서버 이름(화면에는 formatPersonName으로 "사람 3") */
 export type Person = {
   personId: number
   label: string
   photoCount: number
-  repFace: RepresentativeFace
+  /** 대표 얼굴이 없으면 null(백엔드 응답 기준) */
+  repFace: RepresentativeFace | null
 }
 
 /** #10 사람 폴더 목록 */

@@ -6,6 +6,12 @@ import { readStoredValue, removeStoredValue, writeStoredValue } from '@/shared/l
 export type SelfieMatchScenario =
   'three-candidates' | 'one-candidate' | 'no-candidates' | 'face-not-detected'
 
+/**
+ * 사람 폴더(#8·#10)의 대표 얼굴을 어떻게 줄지. 실제 백엔드(셀카 매칭 PR)는 사진 주소를 아직 만들지 못하면
+ * url을, 대표 얼굴이 없으면 repFace를 비워(null) 보낸다. 그때 화면이 깨지지 않는지 확인용
+ */
+export type RepresentativeFaceMode = 'normal' | 'missing-url' | 'missing-face'
+
 /** 다음 API 요청 한 번을 어떻게 실패시킬지 */
 export type NextRequestFailure = 'none' | 'server-error' | 'network-error' | 'timeout'
 
@@ -20,6 +26,7 @@ export type MockSettings = {
   tokensInvalidBefore: number
   /** 실제 카메라 대신 캔버스로 그린 얼굴 영상을 쓴다(웹캠 없는 PC에서 촬영 확인용) */
   useFakeCamera: boolean
+  representativeFaceMode: RepresentativeFaceMode
 }
 
 const settingsKey = 'insaengnaecut.mock-settings'
@@ -31,6 +38,7 @@ const defaultMockSettings: MockSettings = {
   shortImageExpiry: false,
   tokensInvalidBefore: 0,
   useFakeCamera: false,
+  representativeFaceMode: 'normal',
 }
 
 // 저장된 값이 객체인지만 확인한다. 항목별 값은 아래에서 기본값과 합쳐 빈 항목을 채운다

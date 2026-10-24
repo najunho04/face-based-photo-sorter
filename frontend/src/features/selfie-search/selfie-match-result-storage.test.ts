@@ -44,6 +44,21 @@ describe('셀카 검색 결과 보관(④를 새로고침해도 유지)', () => 
     expect(localStorage.length).toBe(0)
   })
 
+  it('대표 얼굴이 비어 있는 후보도 그대로 저장하고 읽는다(백엔드가 대표 얼굴·주소를 비워 보낼 수 있음)', () => {
+    const withoutFace: Person = { ...candidate, personId: 10004, repFace: null }
+    const withoutUrl: Person = {
+      ...candidate,
+      personId: 10005,
+      repFace: { url: null, bbox: { x: 1, y: 2, w: 3, h: 4 } },
+    }
+    saveSelfieMatchResult(1, { kind: 'candidates', candidates: [withoutFace, withoutUrl] })
+
+    expect(readSelfieMatchResult(1)).toEqual({
+      kind: 'candidates',
+      candidates: [withoutFace, withoutUrl],
+    })
+  })
+
   it('저장된 값의 모양이 다르면 없는 것으로 본다', () => {
     saveSelfieMatchResult(1, { kind: 'no-match' })
     sessionStorage.setItem(sessionStorage.key(0)!, JSON.stringify({ kind: 'unknown' }))

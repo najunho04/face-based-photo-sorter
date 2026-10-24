@@ -23,8 +23,8 @@ export function PersonFaceTile({ person, to, onImageError }: PersonFaceTileProps
       className="flex flex-col items-center gap-1.5 rounded-lg py-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring lg:gap-2 lg:border lg:border-border lg:px-2 lg:py-4 lg:hover:bg-muted"
     >
       <FaceCrop
-        imageUrl={person.repFace.url}
-        faceBox={person.repFace.bbox}
+        imageUrl={person.repFace?.url ?? null}
+        faceBox={person.repFace?.bbox ?? null}
         size={isDesktop ? 96 : 88}
         onImageError={onImageError}
       />

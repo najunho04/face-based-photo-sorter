@@ -50,7 +50,11 @@ export default function PersonFolderPage() {
       <AdministratorPageBody>
         <div className="flex items-center gap-4">
           {person && (
-            <FaceCrop imageUrl={person.repFace.url} faceBox={person.repFace.bbox} size={64} />
+            <FaceCrop
+              imageUrl={person.repFace?.url ?? null}
+              faceBox={person.repFace?.bbox ?? null}
+              size={64}
+            />
           )}
           {/* 이름은 머리말 제목에 있으니 여기서는 장 수와 안내만 보여 준다 */}
           <span className="text-small text-muted-foreground">

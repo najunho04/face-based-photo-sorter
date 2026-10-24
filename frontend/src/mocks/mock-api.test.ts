@@ -198,6 +198,23 @@ describe('#10·#9 사람 폴더 (공개된 샘플 행사: 사진 100장, 사람 
     })
   })
 
+  it('대표 얼굴 비우기 설정: 주소 없음이면 url이 null, 얼굴 없음이면 repFace가 null(매칭 PR 백엔드처럼)', async () => {
+    await joinAsParticipant(mockSampleAccessCodes.open)
+
+    updateMockSettings({ representativeFaceMode: 'missing-url' })
+    const withoutUrl = await getPersons({ eventId: 1, minPhotos: 2, requester: 'participant' })
+    updateMockSettings({ representativeFaceMode: 'missing-face' })
+    const withoutFace = await getPersons({ eventId: 1, minPhotos: 2, requester: 'participant' })
+    const match = await matchSelfie({
+      eventId: 1,
+      selfie: new Blob(['jpg'], { type: 'image/jpeg' }),
+    })
+
+    expect(withoutUrl.persons[0].repFace).toEqual({ url: null, bbox: expect.any(Object) })
+    expect(withoutFace.persons[0].repFace).toBeNull()
+    expect(match.candidates[0].repFace).toBeNull()
+  })
+
   it('minPhotos 없이 부르면 48명 모두 온다', async () => {
     await joinAsParticipant(mockSampleAccessCodes.open)
 

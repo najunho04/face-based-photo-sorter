@@ -12,7 +12,8 @@ function storageKey(eventId: number): string {
   return `insaengnaecut.selfie-match.${eventId}`
 }
 
-// 저장된 값이 결과 모양인지 확인한다(후보는 사람 번호·대표 얼굴이 있는지까지)
+// 저장된 값이 결과 모양인지 확인한다(후보는 사람 번호가 있는지까지).
+// 대표 얼굴·주소는 백엔드가 비워 보낼 수 있으므로 없어도 후보로 인정한다(화면은 사람 아이콘)
 function isSelfieMatchResult(value: unknown): value is SelfieMatchResult {
   const candidate = value as Partial<{ kind: string; candidates: unknown }> | null
   if (typeof candidate !== 'object' || candidate === null) return false
@@ -22,7 +23,8 @@ function isSelfieMatchResult(value: unknown): value is SelfieMatchResult {
     Array.isArray(candidate.candidates) &&
     candidate.candidates.every(
       (person: Partial<Person>) =>
-        typeof person.personId === 'number' && typeof person.repFace?.url === 'string',
+        typeof person.personId === 'number' &&
+        (person.repFace === null || typeof person.repFace === 'object'),
     )
   )
 }
