@@ -1,5 +1,6 @@
 import { UserRoundIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { createConcurrencyLimiter } from '@/shared/lib/concurrency-limiter'
 import { calculateFaceCropDrawing, type FaceBoundingBox } from '@/shared/lib/face-crop-geometry'
 import { cn } from '@/shared/lib/utils'
 
@@ -19,6 +20,9 @@ type FaceCropProps = {
 
 /** 화면에 들어오기 이만큼 전에 미리 불러온다 */
 const preloadMargin = '200px'
+
+/** 대표 얼굴 원본을 동시에 받아 펼치는 최대 수. 모든 FaceCrop이 함께 쓴다 */
+const faceDecodeLimiter = createConcurrencyLimiter(4)
 
 // 서버가 잘린 얼굴 이미지를 주지 않으므로(원본 URL + bbox), 원본을 받아 얼굴 둘레만 작은 캔버스에 그려 동그랗게 보여 준다.
 // 원본을 화면에 그대로 두고 CSS로 줄이면 아이폰 사파리가 원본 크기 레이어를 얼굴마다 들고 있다가
@@ -60,21 +64,16 @@ export function FaceCrop({
     return () => observer.disconnect()
   }, [isNearViewport])
 
-  // 원본을 받아 얼굴 둘레만 캔버스에 그리고, 원본은 바로 놓아준다
+  // 원본을 받아 얼굴 둘레만 캔버스에 그리고, 원본은 바로 놓아준다.
+  // 동시에 펼치는 원본 수는 제한한다(2000px 한 장을 펼치면 약 12MB, 첫 화면 얼굴 18개면 200MB 이상)
   useEffect(() => {
     if (!isNearViewport) return
     let isCancelled = false
-    const image = new Image()
-    image.decoding = 'async'
-    // 받은 원본을 미리 해독해 둔 뒤 그린다. 바로 drawImage를 부르면 2000px 사진 해독을 메인 스레드에서
-    // 그 자리에서 하느라 얼굴이 여럿 그려질 때 스크롤이 끊긴다(decode를 못 하는 경우에도 그리기는 한다)
-    image.onload = () => {
-      void image
-        .decode()
-        .catch(() => {})
-        .then(drawFaceCrop)
-    }
-    const drawFaceCrop = () => {
+    let releaseSlot = () => {}
+    let stopLoading = () => {}
+
+    // 받은 원본에서 얼굴 둘레를 잘라 캔버스에 그린다
+    const drawFaceCrop = (image: HTMLImageElement) => {
       const canvas = canvasRef.current
       const context = canvas?.getContext('2d')
       if (isCancelled || !canvas || !context) return
@@ -104,16 +103,50 @@ export function FaceCrop({
       }
       setLoadResult({ url: imageUrl, status: 'loaded' })
     }
-    image.onerror = () => {
-      if (isCancelled) return
-      setLoadResult({ url: imageUrl, status: 'failed' })
-      onImageErrorRef.current?.()
-    }
-    image.src = imageUrl
+
+    void faceDecodeLimiter.run(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseSlot = resolve
+          // 차례를 기다리는 동안 화면을 떠났으면 불러오지 않는다
+          if (isCancelled) {
+            resolve()
+            return
+          }
+          const image = new Image()
+          image.decoding = 'async'
+          // 받은 원본을 미리 해독해 둔 뒤 그린다. 바로 drawImage를 부르면 2000px 사진 해독을 메인 스레드에서
+          // 그 자리에서 하느라 얼굴이 여럿 그려질 때 스크롤이 끊긴다(decode를 못 하는 경우에도 그리기는 한다)
+          image.onload = () => {
+            void image
+              .decode()
+              .catch(() => {})
+              .then(() => {
+                drawFaceCrop(image)
+                resolve()
+              })
+          }
+          image.onerror = () => {
+            if (!isCancelled) {
+              setLoadResult({ url: imageUrl, status: 'failed' })
+              onImageErrorRef.current?.()
+            }
+            resolve()
+          }
+          stopLoading = () => {
+            image.onload = null
+            image.onerror = null
+            image.src = ''
+          }
+          image.src = imageUrl
+        }),
+    )
+
+    // 화면을 떠나거나 주소가 바뀌면 불러오기를 멈추고 자리를 바로 비운다
     return () => {
       isCancelled = true
-      image.onload = null
-      image.onerror = null
+      stopLoading()
+      releaseSlot()
     }
     // faceBox는 객체라 매번 새로 오므로 숫자 값으로 비교한다
     // eslint-disable-next-line react-hooks/exhaustive-deps

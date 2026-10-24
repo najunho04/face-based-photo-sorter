@@ -30,12 +30,25 @@ export function drawResizedJpeg(
   const canvas = document.createElement('canvas')
   canvas.width = resizedDimensions.width
   canvas.height = resizedDimensions.height
+  // 다 쓴 캔버스는 크기를 0으로 줄여 메모리를 바로 놓아준다. 사파리는 캔버스 메모리를 늦게 회수해서
+  // 사진 수십 장을 차례로 줄이면 캔버스 메모리 한도를 넘고 더는 그리지 못한다(업로드 100장 대비)
+  const releaseCanvas = () => {
+    canvas.width = 0
+    canvas.height = 0
+  }
   const context = canvas.getContext('2d')
-  if (!context) return Promise.reject(new Error('이미지를 그릴 수 없어요'))
+  if (!context) {
+    releaseCanvas()
+    return Promise.reject(new Error('이미지를 그릴 수 없어요'))
+  }
   context.drawImage(source, 0, 0, resizedDimensions.width, resizedDimensions.height)
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('이미지를 만들지 못했어요'))),
+      (blob) => {
+        releaseCanvas()
+        if (blob) resolve(blob)
+        else reject(new Error('이미지를 만들지 못했어요'))
+      },
       'image/jpeg',
       quality,
     )

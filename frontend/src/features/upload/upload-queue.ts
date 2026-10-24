@@ -205,6 +205,8 @@ export function createUploadQueue({
         const rejection = result.failed.find((failure) => failure.fileName === file.name)
         entry.status = rejection ? 'failed' : 'done'
         entry.failureReason = rejection ? rejection.reason : null
+        // 다 올린 사진은 다시 보낼 일이 없으므로 줄인 파일을 놓아준다(100장이면 약 60MB를 들고 있게 됨)
+        if (!rejection) entry.preparedFile = null
       })
     } catch (error) {
       if (signal.aborted) return
