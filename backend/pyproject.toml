@@ -18,11 +18,10 @@ dependencies = [
     # Object Storage (NCP는 S3 호환)
     "boto3>=1.35",
     "numpy>=1.26",               # 벡터 연산 (pgvector 변환, 분류)
-    # 얼굴 검출·임베딩 (extraction/, matching/) 라이브러리는 B 담당이 선택해서 `uv add`로 추가
-    # 참고 후보 (Notion 사진 분석 모델 페이지 기준):
-    # "insightface>=0.7.3",
-    # "onnxruntime>=1.19",
-    # "opencv-python-headless>=4.10",
+    # 얼굴 검출·임베딩 (extraction/, matching/): InsightFace buffalo_l, onnxruntime은 insightface가 함께 설치
+    # OpenCV는 서버에 화면이 없어 GUI 기능을 뺀 headless 버전 사용
+    "insightface>=2.1",
+    "opencv-python-headless>=4.10",
 ]
 
 [dependency-groups]
