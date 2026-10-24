@@ -6,6 +6,7 @@
 from fastapi import FastAPI
 
 import authentication.router
+import event.router
 import matching.router
 from core.responses import register_exception_handlers
 
@@ -16,6 +17,7 @@ def create_application() -> FastAPI:
     register_exception_handlers(application)   # 어떤 예외든 공통 응답 형식 { success, data, error }로
 
     application.include_router(authentication.router.router)   # API 1 관리자 로그인, API 6 참가자 입장
+    application.include_router(event.router.router)            # API 2~5 행사 생성·업로드·완료·진행 상황
     application.include_router(matching.router.router)         # API 8 셀카 매칭
     return application
 

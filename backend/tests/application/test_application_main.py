@@ -11,11 +11,15 @@ def registered_routes() -> set[tuple[str, str]]:
     return {(method.upper(), path) for path, operations in paths.items() for method in operations}
 
 
-def test_application_registers_authentication_and_matching_routes():
+def test_application_registers_all_domain_routes():
     routes = registered_routes()
 
     assert ("POST", "/api/admin/login") in routes
     assert ("POST", "/api/events/join") in routes
+    assert ("POST", "/api/admin/events") in routes
+    assert ("POST", "/api/admin/events/{event_id}/photos") in routes
+    assert ("POST", "/api/admin/events/{event_id}/upload-complete") in routes
+    assert ("GET", "/api/admin/events/{event_id}") in routes
     assert ("POST", "/api/events/{event_id}/match") in routes
 
 
