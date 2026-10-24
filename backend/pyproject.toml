@@ -28,6 +28,7 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "httpx2>=2.16.0",            # FastAPI TestClient (Starlette가 httpx 대신 요구)
+    "moto[s3]>=5",               # Object Storage(S3 호환)를 메모리에서 흉내 (테스트에 NCP 키 불필요)
 ]
 
 [tool.pytest.ini_options]
