@@ -5,7 +5,7 @@ Spring으로 치면 DataSource + EntityManager 설정에 해당.
 - 세션(Session): 작업 단위. 요청(API) 하나 또는 작업(워커) 하나마다 새로 열고 닫음
 """
 
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 
@@ -47,7 +47,7 @@ def get_database_session() -> Iterator[Session]:
 
 
 @contextmanager
-def database_session_scope() -> Iterator[Session]:
+def database_session_scope() -> Generator[Session, None, None]:
     """워커·스케줄러용: with 블록 하나가 트랜잭션 하나. 정상 종료 시 커밋, 예외 시 롤백.
 
     사용 예 (워커가 faces INSERT + photos.status='extracted'를 한 트랜잭션으로 처리):
