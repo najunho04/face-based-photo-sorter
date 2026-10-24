@@ -44,7 +44,7 @@ CREATE TABLE photos (
   id          BIGSERIAL PRIMARY KEY,
   event_id    BIGINT NOT NULL REFERENCES events(id),
   file_name   VARCHAR(255) NOT NULL,
-  nas_path    TEXT NOT NULL,                  -- /nas/event1/IMG_0345.jpg
+  nas_path    TEXT NOT NULL,                  -- event1/IMG_0345.jpg (NAS_ROOT_PATH 기준 상대 경로)
   object_key  TEXT,                           -- Object Storage 보관 후 채움
   status      VARCHAR(20) NOT NULL DEFAULT 'uploaded',
   worker_id   VARCHAR(50),                    -- 작업을 잡은 워커

@@ -10,6 +10,7 @@ uv sync                      # Python 3.12 가상환경 + 의존성 설치 (uv.l
 cp .env.example .env         # 로컬 값 그대로 써도 됨
 docker compose up -d         # PostgreSQL 16 + pgvector, 첫 실행 때 스키마 자동 생성
 uv run pytest                # 테스트
+uv run uvicorn main:application --reload   # API 서버 (http://localhost:8000/docs 에서 API 목록 확인)
 ```
 
 스키마를 바꾼 뒤에는 `docker compose down -v && docker compose up -d`로 DB를 새로 만들어야 반영돼요.
