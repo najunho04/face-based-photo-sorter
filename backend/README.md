@@ -21,7 +21,7 @@ FastAPI + PostgreSQL(pgvector) + InsightFace. 프론트 개발에 필요한 것�
 ```bash
 cd backend
 uv sync                  # Python 3.12 + 의존성 (uv.lock 기준)
-cp .env.example .env     # 로컬 값 그대로 써도 됨. Object Storage 키는 아래 참고
+cp .env.example .env     # 로컬 값 그대로 써도 됨. Object Storage 버킷·키는 아래 참고
 docker compose up -d
 uv run uvicorn main:application --reload       # 터미널 1: http://localhost:8000/docs 에서 API 시험
 uv run python -m extraction.worker             # 터미널 2
@@ -30,9 +30,24 @@ uv run pytest                                  # 테스트 (DB 필요)
 
 프론트는 `frontend/.env.development.local`에 `VITE_USE_MOCK=false`를 두면 Vite 개발 서버가 `/api`를 `localhost:8000`으로 넘겨줘요 (로컬에서는 백엔드 CORS 불필요).
 
-### Object Storage 키가 없을 때 (가짜 S3)
+### Object Storage (NCP)
 
-사진 URL은 전부 Object Storage Pre-signed URL이라, 키가 없으면 분류 후 보관 단계에서 멈춰요 (행사가 `clustering`에 머묾). NCP 키 대신 메모리 S3 서버(moto)로 대신할 수 있어요.
+사진 URL은 전부 Object Storage Pre-signed URL이에요. 개발용 NCP 버킷 이름과 키를 받아 `.env`에 넣으면 돼요 (키는 채팅·커밋 금지).
+
+```
+OBJECT_STORAGE_BUCKET=<개발용 버킷>
+OBJECT_STORAGE_ACCESS_KEY=<Access Key>
+OBJECT_STORAGE_SECRET_KEY=<Secret Key>
+```
+
+키가 없으면 분류 후 보관 단계에서 멈춰요 (행사가 `clustering`에 머묾). 개발용 버킷으로 업로드 → 분류 → 보관 → 조회 → 셀카 매칭까지 확인했어요 (2026-10-26).
+
+- 사진 보기(`<img>`), 대표 얼굴, `downloadUrl` 링크 이동은 바로 동작
+- **사진 저장·공유처럼 `downloadUrl`을 JS `fetch`로 받는 기능은 버킷 CORS 설정이 필요**해요. 개발용 버킷은 아직 CORS 설정이 없어서 브라우저에서 막혀요 → 버킷에 프론트 주소(`http://localhost:5173`, 배포 주소) `GET` 허용 필요
+
+### 키 없이 띄우기 (가짜 S3, moto)
+
+NCP 키 대신 메모리 S3 서버(moto)로 대신할 수 있어요. CORS를 기본으로 허용해서 사진 저장·공유도 동작해요.
 
 ```bash
 uvx --from 'moto[server]' moto_server -H 127.0.0.1 -p 5000     # 터미널 3 (껐다 켜면 사진이 사라짐)
@@ -41,8 +56,6 @@ AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local uv run python -c \
 ```
 
 `.env`에는 `OBJECT_STORAGE_ENDPOINT=http://127.0.0.1:5000`, `OBJECT_STORAGE_REGION=us-east-1`, `OBJECT_STORAGE_BUCKET=photo-sorter-local`, 키 두 개는 아무 값(`local`)이나.
-
-moto는 CORS를 기본으로 허용해서 프론트의 사진 저장·공유(`downloadUrl`을 `fetch`)도 로컬에서 그대로 동작해요. 실제 NCP 버킷은 배포 때 CORS 설정이 필요해요.
 
 Object Storage 없이 API만 볼 거면 `.env`에 `CLUSTERING_SCHEDULER_ENABLED=false`로 스케줄러를 끄면 돼요 (분류·공개가 일어나지 않음).
 
@@ -62,7 +75,7 @@ events.status:  uploading ──(API 4)──▶ extracting ──(워커 끝)�
 
 - **이미지 URL**: 모두 Pre-signed URL, `expiresIn`(기본 3600초) 뒤 만료 → 만료되면 같은 API를 다시 불러 새 URL을 받음
 - **대표 얼굴(`repFace`)**: 잘린 이미지가 아니라 원본 사진 URL + 얼굴 위치 `bbox`(원본 픽셀 기준). 프론트가 CSS로 잘라 보여줌. 보여줄 수 없으면 `repFace=null`
-- **`downloadUrl`(API 9)**: 열면 원래 파일 이름으로 저장되는 주소 (`Content-Disposition: attachment`). JS `fetch`로 받으려면 **버킷 CORS 설정**이 필요 (인프라 담당), `<img>`·링크 이동은 불필요
+- **`downloadUrl`(API 9)**: 열면 원래 파일 이름으로 저장되는 주소 (`Content-Disposition: attachment`). JS `fetch`로 받으려면 **버킷 CORS 설정**이 필요 (개발용 버킷은 아직 없음), `<img>`·링크 이동은 불필요
 - **사람 폴더 이름**: `label`은 `user1`, `user2` … (사진 많은 순). 한 번만 찍힌 사람도 폴더가 생기니 목록은 `minPhotos=2` 권장
 - **토큰**: 관리자·참가자 모두 12시간 만료 → `UNAUTHORIZED`면 다시 로그인·입장
 - **에러**: 항상 `{ success: false, error: { code, message } }`. `message`는 화면에 그대로 띄워도 되는 문구, 분기는 `code`로
