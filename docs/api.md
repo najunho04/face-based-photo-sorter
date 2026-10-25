@@ -51,9 +51,11 @@
 // req
 { "loginId": "admin", "password": "<비밀번호>" }
 // res.data
-{ "accessToken": "eyJhbGciOi...", "expiresIn": 3600 }
+{ "accessToken": "eyJhbGciOi...", "expiresIn": 43200 }
 ```
 에러: `LOGIN_FAILED`, `INVALID_REQUEST`
+
+구현 규칙: 관리자·참가자 토큰 모두 12시간(43200초) 만료 (`ACCESS_TOKEN_EXPIRATION_SECONDS`로 변경 가능).
 
 ### 2. 행사 생성 `POST /api/admin/events`
 인증코드 발급. 프론트가 `accessCode`로 QR을 그림.

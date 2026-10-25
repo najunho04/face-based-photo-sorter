@@ -62,7 +62,7 @@ events.status:  uploading ──(API 4)──▶ extracting ──(워커 끝)�
 - **대표 얼굴(`repFace`)**: 잘린 이미지가 아니라 원본 사진 URL + 얼굴 위치 `bbox`(원본 픽셀 기준). 프론트가 CSS로 잘라 보여줌. 보여줄 수 없으면 `repFace=null`
 - **`downloadUrl`(API 9)**: 열면 원래 파일 이름으로 저장되는 주소 (`Content-Disposition: attachment`). JS `fetch`로 받으려면 **버킷 CORS 설정**이 필요 (인프라 담당), `<img>`·링크 이동은 불필요
 - **사람 폴더 이름**: `label`은 `user1`, `user2` … (사진 많은 순). 한 번만 찍힌 사람도 폴더가 생기니 목록은 `minPhotos=2` 권장
-- **토큰**: 관리자·참가자 모두 1시간 만료 → `UNAUTHORIZED`면 다시 로그인·입장
+- **토큰**: 관리자·참가자 모두 12시간 만료 → `UNAUTHORIZED`면 다시 로그인·입장
 - **에러**: 항상 `{ success: false, error: { code, message } }`. `message`는 화면에 그대로 띄워도 되는 문구, 분기는 `code`로
 
 ## 알려진 문제

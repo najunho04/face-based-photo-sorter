@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     admin_login_id: str
     admin_password: str
-    access_token_expiration_seconds: int = 3600
+    access_token_expiration_seconds: int = 12 * 60 * 60   # 12시간: 행사 당일 업로드·열람 중 다시 로그인·입장하지 않게
 
     # NCP Object Storage (S3 호환)
     object_storage_endpoint: str = "https://kr.object.ncloudstorage.com"

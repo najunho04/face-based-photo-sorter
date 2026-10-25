@@ -64,3 +64,11 @@ def test_token_with_unknown_role_is_unauthorized(test_settings):
     with pytest.raises(ApplicationError) as raised_error:
         decode_access_token(unknown_role_token)
     assert raised_error.value.error_code == ErrorCode.UNAUTHORIZED
+
+
+def test_token_expires_in_twelve_hours_by_default(monkeypatch):
+    # 행사 하루 동안 업로드·열람 중에 다시 로그인·입장하지 않게 12시간 (프론트 요청, .env로 바꿀 수 있음)
+    from core.configuration import Settings
+
+    monkeypatch.delenv("ACCESS_TOKEN_EXPIRATION_SECONDS")
+    assert Settings(_env_file=None).access_token_expiration_seconds == 12 * 60 * 60
