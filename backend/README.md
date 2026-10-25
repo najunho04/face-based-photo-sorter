@@ -42,6 +42,8 @@ AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local uv run python -c \
 
 `.env`에는 `OBJECT_STORAGE_ENDPOINT=http://127.0.0.1:5000`, `OBJECT_STORAGE_REGION=us-east-1`, `OBJECT_STORAGE_BUCKET=photo-sorter-local`, 키 두 개는 아무 값(`local`)이나.
 
+moto는 CORS를 기본으로 허용해서 프론트의 사진 저장·공유(`downloadUrl`을 `fetch`)도 로컬에서 그대로 동작해요. 실제 NCP 버킷은 배포 때 CORS 설정이 필요해요.
+
 Object Storage 없이 API만 볼 거면 `.env`에 `CLUSTERING_SCHEDULER_ENABLED=false`로 스케줄러를 끄면 돼요 (분류·공개가 일어나지 않음).
 
 ## 행사 흐름과 프론트가 보는 상태
