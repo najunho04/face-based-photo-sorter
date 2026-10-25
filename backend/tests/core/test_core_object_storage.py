@@ -74,4 +74,7 @@ def test_get_object_storage_reads_settings(monkeypatch):
     assert object_storage.bucket == "photo-bucket"
     assert object_storage.presigned_url_expiration_seconds == 1800
     assert object_storage.client.meta.endpoint_url == "https://kr.object.ncloudstorage.com"
+    # boto3 1.36부터 기본으로 붙는 체크섬 헤더를 NCP가 거부함(업로드가 AccessDenied) → 필요할 때만 붙이게 함
+    assert object_storage.client.meta.config.request_checksum_calculation == "when_required"
+    assert object_storage.client.meta.config.response_checksum_validation == "when_required"
     get_object_storage.cache_clear()

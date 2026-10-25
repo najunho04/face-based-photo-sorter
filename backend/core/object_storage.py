@@ -61,6 +61,11 @@ def get_object_storage() -> ObjectStorage:
         aws_access_key_id=settings.object_storage_access_key,
         aws_secret_access_key=settings.object_storage_secret_key,
         # NCP는 서명 방식 v4 (Pre-signed URL도 같은 방식으로 서명)
-        config=Config(signature_version="s3v4"),
+        # 체크섬은 필요할 때만: boto3 1.36부터 업로드에 기본으로 붙는 CRC 체크섬 헤더를 NCP가 거부함 (AccessDenied)
+        config=Config(
+            signature_version="s3v4",
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        ),
     )
     return ObjectStorage(client, settings.object_storage_bucket, settings.presigned_url_expiration_seconds)
