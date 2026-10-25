@@ -45,6 +45,18 @@ def test_create_presigned_url_points_to_object_and_expires(s3_client):
     assert "X-Amz-Signature" in query
 
 
+def test_create_presigned_download_url_asks_browser_to_save_file(s3_client):
+    # API 9 downloadUrl: 열면 화면에 띄우지 않고 원래 파일 이름으로 저장 (한글 이름도 깨지지 않게 UTF-8 인코딩)
+    object_storage = ObjectStorage(s3_client, BUCKET, presigned_url_expiration_seconds=3600)
+
+    download_url = urlparse(object_storage.create_presigned_download_url("event1/가을_01.jpg", "가을_01.jpg"))
+
+    query = parse_qs(download_url.query)
+    assert query["response-content-disposition"] == ["attachment; filename*=UTF-8''%EA%B0%80%EC%9D%84_01.jpg"]
+    assert query["X-Amz-Expires"] == ["3600"]
+    assert "X-Amz-Signature" in query
+
+
 def test_get_object_storage_reads_settings(monkeypatch):
     # 실제 연결 없이 설정값(.env)이 클라이언트에 들어가는지만 확인
     from core.configuration import get_settings

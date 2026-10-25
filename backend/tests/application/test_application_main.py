@@ -25,6 +25,9 @@ def test_application_registers_all_domain_routes():
     assert ("POST", "/api/admin/events/{event_id}/upload-complete") in routes
     assert ("GET", "/api/admin/events/{event_id}") in routes
     assert ("POST", "/api/events/{event_id}/match") in routes
+    assert ("GET", "/api/events/{event_id}/photos") in routes
+    assert ("GET", "/api/events/{event_id}/persons") in routes
+    assert ("GET", "/api/events/{event_id}/persons/{person_id}/photos") in routes
 
 
 def test_application_uses_common_response_format_for_unknown_path():

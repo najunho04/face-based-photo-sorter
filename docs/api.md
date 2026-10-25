@@ -1,7 +1,7 @@
 # API 명세
 
-> 출처: Notion [API 명세](https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d) (2026-10-23 기준). 원본이 바뀌면 이 문서도 갱신.
-> **구현 중 정한 규칙**(아래 "구현 규칙" 줄)은 2026-10-24 추가, Notion에는 아직 미반영.
+> 출처: Notion [API 명세](https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d) (2026-10-26 동기화). 원본이 바뀌면 이 문서도 갱신.
+> **구현 중 정한 규칙**(아래 "구현 규칙" 줄)은 2026-10-24·25 추가, Notion "5. 구현 규칙"에도 반영 (2026-10-26).
 
 ## 공통
 
@@ -122,6 +122,8 @@
 ```
 에러: `EVENT_NOT_FOUND`, `FORBIDDEN`
 
+구현 규칙: 참가자 토큰만 (관리자 토큰은 `FORBIDDEN`). `status≠open`이면 `EVENT_NOT_READY`. `page`는 1 이상, `size`는 1~100 (벗어나면 `INVALID_REQUEST`). 사진 id(업로드) 순서. Object Storage에 보관된 사진만 목록·`total`에 포함 (`failed`·보관 누락 사진 제외).
+
 ### 8. 셀카 매칭 `POST /api/events/{eventId}/match`
 `multipart/form-data`, 필드 `selfie`. 웹서버가 동기로 얼굴 검출·벡터 추출 → `persons.centroid`와 코사인 유사도 → 기준값 이상 상위 0~3개.
 ```json
@@ -151,6 +153,8 @@
 "전체 다운로드"는 프론트가 `downloadUrl`을 차례로 받음 (ZIP 없음).
 에러: `EVENT_NOT_READY`, `PERSON_NOT_FOUND`, `FORBIDDEN`
 
+구현 규칙: 사진 id 순서, 한 사진에 같은 사람 얼굴이 여러 개여도 한 번만. `downloadUrl`은 `Content-Disposition: attachment; filename*=UTF-8''<파일 이름>`으로 내려와 원래 이름으로 저장됨. 다른 행사의 `personId`는 `PERSON_NOT_FOUND`.
+
 ### 10. 사람 폴더 목록 `GET /api/events/{eventId}/persons`
 쿼리: `minPhotos`(선택, 기본 1) — 사진 수가 이 값 이상인 폴더만 (배경에 한 번 찍힌 사람 숨김). `photoCount` 내림차순.
 ```json
@@ -163,6 +167,8 @@
 }
 ```
 에러: `EVENT_NOT_READY`, `EVENT_NOT_FOUND`, `FORBIDDEN`
+
+구현 규칙: `minPhotos`는 1 이상 (0 이하면 `INVALID_REQUEST`). `photoCount`는 보관된 서로 다른 사진 수 (API 9의 `total`과 같음), 같으면 `personId` 순. `repFace`는 대표 얼굴이 없거나 그 사진이 보관되지 않았으면 `null` (API 8도 같은 규칙).
 
 ## 에러코드
 

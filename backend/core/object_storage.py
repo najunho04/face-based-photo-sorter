@@ -7,6 +7,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote
 
 import boto3
 from botocore.config import Config
@@ -31,6 +32,19 @@ class ObjectStorage:
         return self.client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.bucket, "Key": object_key},
+            ExpiresIn=self.presigned_url_expiration_seconds,
+        )
+
+    def create_presigned_download_url(self, object_key: str, file_name: str) -> str:
+        # 다운로드용(API 9 downloadUrl): 응답 헤더를 attachment로 바꿔서 브라우저가 화면에 띄우지 않고 저장
+        # filename*=UTF-8''...: 한글 파일 이름도 깨지지 않게 RFC 5987 방식으로 인코딩
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": object_key,
+                "ResponseContentDisposition": f"attachment; filename*=UTF-8''{quote(file_name)}",
+            },
             ExpiresIn=self.presigned_url_expiration_seconds,
         )
 
