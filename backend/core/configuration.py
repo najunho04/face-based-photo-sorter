@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # NAS: 로컬은 backend/nas, 운영은 /nas
     nas_root_path: str = "./nas"
 
+    # 분류 스케줄러(멈춘 사진 복구, 분류 시작 → 보관 → open)를 API 서버 안에서 돌릴지
+    clustering_scheduler_enabled: bool = True
+
     # 인증: 비밀키·관리자 계정은 기본값 없이 반드시 .env에서 받음 (실수로 기본값이 운영에 나가는 것 방지)
     jwt_secret_key: str
     admin_login_id: str

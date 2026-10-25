@@ -90,6 +90,24 @@ CREATE INDEX idx_faces_photo   ON faces(photo_id);            -- 사진별 얼�
 4. **워커 사망**: 웹서버가 `claimed_at` 5분 초과 `processing` 행을 3번과 같이 복구.
 5. **영구 오류**(파일 없음·손상): `status='failed'`, `worker_id`는 추적용으로 남김. 관리자 화면 실패 목록에 노출.
 
+## 분류 규칙 (persons)
+
+> 구현하면서 정한 규칙 (2026-10-25). Notion에는 아직 반영 안 됨.
+
+웹서버(API 서버)의 백그라운드 스케줄러가 5초마다 반복한다 (`backend/clustering/scheduler.py`).
+
+1. **멈춘 사진 복구**: `claimed_at`이 DB 시계 기준 5분 넘은 `processing` 사진을 `uploaded`, `worker_id=NULL`, `claimed_at=NULL`로 되돌림 (워커 큐 규칙 4번).
+2. **분류 시작**: `extracting` 행사 중 `uploaded`·`processing` 사진이 0장인 행사를 조건부 UPDATE 한 번으로 `clustering`으로 바꿈.
+3. **분류**: 행사 얼굴 전체를 평균 연결(average linkage) 계층적 군집으로 묶음. 두 묶음의 평균 코사인 거리가 기준값(0.65) 이하일 때만 합침. 기준값은 Gallagher 589장 실험(0.75부터 다른 사람이 섞임)으로 정함.
+   - 한 번만 나온 사람도 폴더 1개 (숨기는 건 API 10의 `minPhotos`)
+   - `label`: 사진 수가 많은 사람부터 `user1`, `user2`, … (같은 입력이면 같은 순서)
+   - `centroid`: 소속 얼굴 벡터 평균을 길이 1로 정규화
+   - `rep_face_id`: 그 사람의 가장 큰 얼굴 면적의 50% 이상인 얼굴 중 `centroid`와 가장 닮은 얼굴
+   - 다시 실행해도 안전: 이전 persons·`faces.person_id`를 지우고 한 트랜잭션으로 새로 만듦
+4. **보관 → `open`**: 분류가 끝나면 `archive_and_open_event` 호출. 보관이 실패하면 `clustering`에 남고, 다음 주기에는 분류 없이 보관만 다시 함.
+
+API 서버가 여러 대여도 같은 행사는 한 서버만 처리하도록 행사별 PostgreSQL advisory lock(`pg_try_advisory_lock(event_id)`)을 잡는다. 처리 중 서버가 죽으면 커넥션이 끊기면서 잠금이 풀려 다른 서버가 이어서 처리한다.
+
 ## 매칭 쿼리
 
 셀카 벡터와 해당 행사 `persons.centroid`의 코사인 유사도 → 기준값 이상 상위 3명.

@@ -15,6 +15,8 @@ uv run uvicorn main:application --reload   # API 서버 (http://localhost:8000/d
 
 스키마를 바꾼 뒤에는 `docker compose down -v && docker compose up -d`로 DB를 새로 만들어야 반영돼요.
 
+API 서버는 백그라운드로 분류 스케줄러도 함께 돌려요 (5초마다 멈춘 사진 복구, 추출이 끝난 행사 분류 → Object Storage 보관 → `open`). 로컬에서 Object Storage 키 없이 띄우면 보관 단계에서 오류 로그가 반복되니, 필요 없으면 `.env`에 `CLUSTERING_SCHEDULER_ENABLED=false`로 꺼 두세요.
+
 ## 백엔드 팀원에게
 
 초기 세팅 올려뒀어요. 위 명령으로 바로 띄울 수 있어요.

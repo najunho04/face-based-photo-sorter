@@ -1,7 +1,11 @@
-"""앱 진입점(main.py) 테스트: 라우터가 모두 등록됐는지, 공통 응답 형식이 앱 전체에 적용되는지 (DB 불필요)."""
+"""앱 진입점(main.py) 테스트: 라우터가 모두 등록됐는지, 공통 응답 형식이 앱 전체에 적용되는지,
+서버 시작·종료 때 분류 스케줄러가 켜지고 꺼지는지 (DB 불필요)."""
+
+import threading
 
 from fastapi.testclient import TestClient
 
+from core.configuration import get_settings
 from main import create_application
 
 
@@ -43,3 +47,43 @@ def test_application_login_works_end_to_end():
 
     assert response.status_code == 200
     assert response.json()["success"] is True
+
+
+class FakeScheduler:
+    # 실제 스케줄러 대신 시작·멈춤만 기록 (DB 없이 lifespan 연결만 확인)
+    instances = []
+
+    def __init__(self, object_storage_provider, nas_root_path):
+        self.nas_root_path = nas_root_path
+        self.is_running = False
+        self.stopped = threading.Event()
+        FakeScheduler.instances.append(self)
+
+    def run(self):
+        self.is_running = True
+        self.stopped.wait(5)
+
+    def stop(self):
+        self.stopped.set()
+
+
+def test_application_starts_and_stops_clustering_scheduler(monkeypatch):
+    FakeScheduler.instances = []
+    monkeypatch.setattr("main.ClusteringScheduler", FakeScheduler)
+
+    # with 블록 = 서버 실행 중 (lifespan 시작·종료)
+    with TestClient(create_application()):
+        [scheduler] = FakeScheduler.instances
+    assert scheduler.is_running is True
+    assert scheduler.stopped.is_set()
+
+
+def test_application_does_not_start_scheduler_when_disabled(monkeypatch):
+    FakeScheduler.instances = []
+    monkeypatch.setattr("main.ClusteringScheduler", FakeScheduler)
+    monkeypatch.setenv("CLUSTERING_SCHEDULER_ENABLED", "false")
+    get_settings.cache_clear()
+
+    with TestClient(create_application()):
+        pass
+    assert FakeScheduler.instances == []
