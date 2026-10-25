@@ -1,6 +1,6 @@
 # ERD / DB 스키마
 
-> 출처: Notion [백엔드 흐름](https://app.notion.com/p/3fb0ea4df78580f68c86d8936c86967c) (2026-10-23 기준). 원본이 바뀌면 이 문서도 갱신.
+> 출처: Notion [백엔드 흐름](https://app.notion.com/p/3fb0ea4df78580f68c86d8936c86967c) (2026-10-26 동기화). 원본이 바뀌면 이 문서도 갱신.
 
 DB는 **PostgreSQL + pgvector**. 별도 큐 리소스 없이 `photos.status`를 작업 큐로 쓴다.
 
@@ -92,7 +92,7 @@ CREATE INDEX idx_faces_photo   ON faces(photo_id);            -- 사진별 얼�
 
 ## 분류 규칙 (persons)
 
-> 구현하면서 정한 규칙 (2026-10-25). Notion에는 아직 반영 안 됨.
+> 구현하면서 정한 규칙 (2026-10-25). Notion "구현 반영 (2026-10-25)"에도 반영.
 
 웹서버(API 서버)의 백그라운드 스케줄러가 5초마다 반복한다 (`backend/clustering/scheduler.py`).
 
