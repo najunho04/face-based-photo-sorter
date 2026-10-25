@@ -29,6 +29,7 @@ def safe_file_name(raw_file_name: str) -> str | None:
 
 def save_photo_file(nas_root_path: str | Path, event_id: int, file_name: str, image_bytes: bytes) -> str:
     # NAS 루트 기준 상대 경로를 반환해서 DB에 저장 (로컬 ./nas, 운영 /nas 어디서든 같은 값)
+    # 리턴은 상대경로(event7/IMG_0001.jpg). file_path로 ./nas/event7/IMG_0001.jpg에 저장까지.
     # 같은 이름 파일은 덮어씀 (팀 결정: 한 행사 안에서 파일 이름이 겹치는 경우는 고려하지 않음)
     nas_path = f"event{event_id}/{file_name}"
     file_path = Path(nas_root_path) / nas_path
