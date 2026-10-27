@@ -1,0 +1,189 @@
+/*
+ * 인생내컷 디자인 토큰 (라이트 모드 전용)
+ * 기준 문서: ./MASTER.md
+ * 사용법: Tailwind v4 + shadcn/ui 프로젝트의 src/index.css(또는 globals.css)에
+ *   @import "tailwindcss"; 다음 줄에 이 파일 내용을 넣습니다.
+ * Pretendard는 index.html에서 불러옵니다(MASTER.md 3.1).
+ */
+
+:root {
+  /* shadcn/ui 기본 변수 */
+  --radius: 0.75rem; /* 12px: 버튼·입력칸 기본 모서리 */
+
+  --background: #FFFFFF;
+  --foreground: #1E1B4B;
+
+  --card: #FFFFFF;
+  --card-foreground: #1E1B4B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E1B4B;
+
+  --primary: #4F46E5;
+  --primary-foreground: #FFFFFF;
+
+  /* 보조 버튼 = 연한 인디고 배경 + 진한 인디고 글자 */
+  --secondary: #EEF2FF;
+  --secondary-foreground: #3730A3;
+
+  --muted: #F5F6FA;
+  --muted-foreground: #4B5563; /* 회색 바탕 위에서도 대비 7.00 */
+
+  /* shadcn의 accent는 메뉴 항목 마우스 올림 배경 */
+  --accent: #EEF2FF;
+  --accent-foreground: #3730A3;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E5E7EB;
+  --input: #8A919E; /* 입력칸 테두리, 흰 바탕 대비 3.17 */
+  --ring: #4F46E5;
+
+  /* 서비스 전용 변수 */
+  --primary-hover: #4338CA;
+  --primary-pressed: #3730A3;
+  --primary-soft-hover: #E0E7FF;
+  --primary-border: #C7D2FE;
+
+  --text-muted: #6B7280; /* 흰 바탕에서만 사용 */
+
+  --success: #15803D;
+  --success-soft: #F0FDF4;
+  --success-bar: #16A34A; /* 글자 없는 진행 막대 전용 */
+  --warning: #B45309;
+  --warning-soft: #FFFBEB;
+  --danger: #B91C1C;
+  --danger-soft: #FEF2F2;
+  --danger-border: #fecaca; /* 실패 목록 상자 테두리(시안 A4·A5) */
+  --neutral-soft: #F3F4F6;
+
+  --placeholder: #EEF0F4; /* 사진 로딩 자리 */
+  --overlay: rgba(17, 24, 39, 0.5);
+
+  /* 카메라·사진 크게 보기 화면 */
+  --dark-bg: #0B0B12;
+  --dark-surface: #1F1F2A;
+  --dark-foreground: #FFFFFF;
+  --dark-foreground-secondary: #A1A1AA;
+
+  /* 움직임 */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-sheet: 250ms;
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@theme inline {
+  /* 색: bg-primary, text-muted-foreground 같은 Tailwind 클래스로 사용 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-soft-hover: var(--primary-soft-hover);
+  --color-primary-border: var(--primary-border);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-text-muted: var(--text-muted);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-bar: var(--success-bar);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-neutral-soft: var(--neutral-soft);
+  --color-placeholder: var(--placeholder);
+  --color-dark-bg: var(--dark-bg);
+  --color-dark-surface: var(--dark-surface);
+  --color-dark-foreground: var(--dark-foreground);
+  --color-dark-foreground-secondary: var(--dark-foreground-secondary);
+
+  /* 모서리: rounded-sm 8 / rounded-md 12 / rounded-lg 16 / rounded-xl 24 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 12px);
+
+  /* 글꼴 */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  /* 글자 크기: text-display, text-title-1 ... (MASTER.md 3.2) */
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.25rem;
+  --text-display--font-weight: 700;
+  --text-title-1: 1.5rem;
+  --text-title-1--line-height: 2rem;
+  --text-title-1--font-weight: 700;
+  --text-title-2: 1.25rem;
+  --text-title-2--line-height: 1.75rem;
+  --text-title-2--font-weight: 700;
+  --text-headline: 1.0625rem;
+  --text-headline--line-height: 1.5rem;
+  --text-headline--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--font-weight: 500;
+
+  /* 그림자 */
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --shadow-md: 0 6px 16px rgba(17, 24, 39, 0.12);
+  --shadow-lg: 0 12px 32px rgba(17, 24, 39, 0.16);
+
+  /* 레이아웃 */
+  --container-content: 70rem; /* 1120px */
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    word-break: keep-all;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* 아이폰 Safari 확대 방지 */
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -3,11 +3,27 @@ node_modules/
 
 # 빌드 산출물
 dist/
+dist-ssr/
 build/
 
 # 테스트·로그
 coverage/
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+
+# 내 컴퓨터 전용 파일 (.env.*.local 포함)
+*.local
+
+# 에디터·OS (.vscode/는 저장소 루트 .gitignore에서 제외)
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
