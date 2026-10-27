@@ -48,7 +48,8 @@ CREATE TABLE photos (
   object_key  TEXT,                           -- Object Storage 보관 후 채움
   status      VARCHAR(20) NOT NULL DEFAULT 'uploaded',
   worker_id   VARCHAR(50),                    -- 작업을 잡은 워커
-  claimed_at  TIMESTAMP                       -- 작업을 잡은 시각 (5분 초과 시 복구)
+  claimed_at  TIMESTAMP,                      -- 작업을 잡은 시각 (5분 초과 시 복구)
+  UNIQUE (event_id, file_name)                -- 같은 이름 = 같은 사진, 재업로드는 NAS만 덮어씀 (migrations/002, 2026-10-27)
 );
 
 CREATE TABLE persons (

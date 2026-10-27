@@ -4,6 +4,7 @@ import string
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from core.error_codes import ApplicationError, ErrorCode
@@ -76,6 +77,24 @@ def find_event_for_update(database_session: Session, event_id: int, for_share: b
     return event
 
 
+def add_or_requeue_photo(database_session: Session, event_id: int, file_name: str, nas_path: str) -> None:
+    # 새 이름이면 uploaded 행 추가 → 워커가 잡아서 얼굴 추출 (docs/erd.md 워커 큐 규칙)
+    # 같은 이름이 이미 있으면 같은 사진(재업로드·재시도)이라 행을 늘리지 않음. NAS 파일은 이미 덮어씀
+    # - 기존 행이 failed면 새 파일로 다시 처리하도록 uploaded로 되돌림
+    # - uploaded·processing·extracted면 그대로 (같은 사진을 두 번 분류하지 않음)
+    # INSERT ... ON CONFLICT 한 문장이라 재시도가 원래 요청과 동시에 와도 유일 제약 오류 없이 처리됨
+    statement = (
+        insert(Photo)
+        .values(event_id=event_id, file_name=file_name, nas_path=nas_path, status=PhotoStatus.UPLOADED)
+        .on_conflict_do_update(
+            constraint="uq_photos_event_file_name",
+            set_={"status": PhotoStatus.UPLOADED, "worker_id": None, "claimed_at": None},
+            where=Photo.status == PhotoStatus.FAILED,
+        )
+    )
+    database_session.execute(statement)
+
+
 def upload_photos(
     database_session: Session,
     event_id: int,
@@ -97,8 +116,7 @@ def upload_photos(
             failures.append(UploadFailure(upload_file.file_name, ErrorCode.UNSUPPORTED_FILE))
         else:
             nas_path = save_photo_file(nas_root_path, event.id, file_name, upload_file.image_bytes)
-            # status=uploaded: 워커가 이 행을 잡아서 얼굴을 추출함 (docs/erd.md 워커 큐 규칙)
-            database_session.add(Photo(event_id=event.id, file_name=file_name, nas_path=nas_path, status=PhotoStatus.UPLOADED))
+            add_or_requeue_photo(database_session, event.id, file_name, nas_path)
             uploaded_count += 1
     database_session.commit()
     return UploadResult(uploaded_count=uploaded_count, failures=failures)

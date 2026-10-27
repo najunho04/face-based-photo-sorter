@@ -110,6 +110,15 @@ def test_person_groups_faces_and_points_to_representative_face(database_session)
     assert first_face.person.label == "user1"
 
 
+def test_photo_file_name_must_be_unique_within_event(database_session):
+    # 같은 행사에 같은 파일 이름 행은 1개만 (업로드 재시도가 동시에 들어와도 DB가 막음)
+    event = create_event(database_session)
+    create_photo(database_session, event, "IMG_0001.jpg")
+
+    with pytest.raises(IntegrityError):
+        create_photo(database_session, event, "IMG_0001.jpg")
+
+
 def test_person_label_must_be_unique_within_event(database_session):
     event = create_event(database_session)
     database_session.add(Person(event=event, label="user1", centroid=unit_vector(1)))

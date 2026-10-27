@@ -28,6 +28,13 @@ uv run python -m extraction.worker             # 터미널 2
 uv run pytest                                  # 테스트 (DB 필요)
 ```
 
+이미 DB 볼륨이 있으면 새 마이그레이션은 자동 적용되지 않아요 (`docker-entrypoint-initdb.d`는 빈 볼륨일 때만 실행). 새 `.sql`이 생기면 아래처럼 한 번 적용하거나, 데이터를 버려도 되면 `docker compose down -v && docker compose up -d`.
+
+```bash
+# 예: 002 (같은 행사·같은 파일 이름 1행 제약, 2026-10-27)
+docker compose exec -T database sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/002_unique_photo_file_name.sql
+```
+
 프론트는 `frontend/.env.development.local`에 `VITE_USE_MOCK=false`를 두면 Vite 개발 서버가 `/api`를 `localhost:8000`으로 넘겨줘요 (로컬에서는 백엔드 CORS 불필요).
 
 ### Object Storage (NCP)

@@ -74,6 +74,8 @@ class Event(Base):
 
 class Photo(Base):
     __tablename__ = "photos"
+    # 같은 행사에 같은 파일 이름은 1행 (migrations/002). 재업로드는 NAS만 덮어씀
+    __table_args__ = (UniqueConstraint("event_id", "file_name", name="uq_photos_event_file_name"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"))

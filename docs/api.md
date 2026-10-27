@@ -1,7 +1,7 @@
 # API 명세
 
 > 출처: Notion [API 명세](https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d) (2026-10-26 동기화). 원본이 바뀌면 이 문서도 갱신.
-> **구현 중 정한 규칙**(아래 "구현 규칙" 줄)은 2026-10-24·25 추가, Notion "5. 구현 규칙"에도 반영 (2026-10-26).
+> **구현 중 정한 규칙**(아래 "구현 규칙" 줄)은 2026-10-24·25 추가, Notion "5. 구현 규칙"에도 반영 (2026-10-26). 2026-10-27 같은 파일 이름 규칙은 Notion 미반영.
 
 ## 공통
 
@@ -77,7 +77,7 @@
 ```
 에러: `EVENT_NOT_FOUND`, `INVALID_STATUS`(완료 후 추가 업로드), `UNSUPPORTED_FILE`, `FILE_TOO_LARGE`
 
-구현 규칙: `UNSUPPORTED_FILE`·`FILE_TOO_LARGE`는 요청 전체 실패가 아니라 `failed[].reason`으로 옴. 사진 1장 최대 20MB. jpg·png 여부는 확장자가 아니라 파일 내용으로 판단. 파일 이름은 경로를 뺀 마지막 부분만 쓰고, 같은 행사에 같은 이름을 다시 올리면 NAS 파일을 덮어씀.
+구현 규칙: `UNSUPPORTED_FILE`·`FILE_TOO_LARGE`는 요청 전체 실패가 아니라 `failed[].reason`으로 옴. 사진 1장 최대 20MB. jpg·png 여부는 확장자가 아니라 파일 내용으로 판단. 파일 이름은 경로를 뺀 마지막 부분만 씀. 같은 행사에 같은 이름을 다시 올리면 같은 사진으로 보고 NAS 파일만 덮어쓰고 `photos` 행은 늘리지 않음(응답에서는 `uploaded`로 셈). 기존 사진이 `failed`였으면 다시 `uploaded`로 돌려 재처리 (2026-10-27).
 
 ### 4. 업로드 완료 `POST /api/admin/events/{eventId}/upload-complete`
 요청 바디 없음. `events.status`를 `extracting`으로 바꾸고 이후 업로드 차단.
