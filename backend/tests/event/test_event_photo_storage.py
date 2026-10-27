@@ -38,3 +38,14 @@ def test_save_photo_file_writes_under_event_folder(tmp_path):
     # DB에는 NAS 루트 기준 상대 경로를 저장 (로컬 ./nas, 운영 /nas 어디서든 워커가 같은 값으로 찾음)
     assert nas_path == "event7/IMG_0001.jpg"
     assert (tmp_path / "event7" / "IMG_0001.jpg").read_bytes() == JPEG_BYTES
+
+
+def test_save_photo_file_overwrites_same_name_without_leaving_temporary_files(tmp_path):
+    # 같은 이름 = 같은 사진(팀 결정)이라 덮어씀. 임시 파일에 쓴 뒤 바꿔치기해서 워커가 반쯤 쓰인 파일을 읽지 않게 함
+    save_photo_file(tmp_path, event_id=7, file_name="IMG_0001.jpg", image_bytes=JPEG_BYTES)
+    save_photo_file(tmp_path, event_id=7, file_name="IMG_0001.jpg", image_bytes=PNG_BYTES)
+
+    assert (tmp_path / "event7" / "IMG_0001.jpg").read_bytes() == PNG_BYTES
+    assert [path.name for path in (tmp_path / "event7").iterdir()] == ["IMG_0001.jpg"]
+    # 임시 파일 기본 권한(600)이 아니라 워커가 읽을 수 있는 권한
+    assert (tmp_path / "event7" / "IMG_0001.jpg").stat().st_mode & 0o777 == 0o644

@@ -164,6 +164,83 @@ def test_upload_reports_bad_files_and_keeps_good_ones(database_session, nas_root
     assert not (nas_root / f"event{target_event.id}" / "IMG_0099.jpg").exists()
 
 
+def upload(test_client, event_id: int, files: list[tuple[str, bytes]]):
+    return test_client.post(
+        f"/api/admin/events/{event_id}/photos",
+        headers=admin_headers(),
+        files=[("files", (file_name, image_bytes, "image/jpeg")) for file_name, image_bytes in files],
+    )
+
+
+def event_photos(database_session, target_event: Event) -> list[Photo]:
+    return database_session.scalars(select(Photo).where(Photo.event_id == target_event.id).order_by(Photo.id)).all()
+
+
+def test_reupload_of_same_file_name_overwrites_file_without_adding_row(database_session, nas_root):
+    # 업로드 재시도(시간 초과 등)로 같은 이름이 다시 와도 photos 행은 1개 → 같은 사진이 두 번 분류되지 않음
+    target_event = create_event(database_session)
+    test_client = build_test_client(database_session)
+
+    first_response = upload(test_client, target_event.id, [("IMG_0001.jpg", JPEG_BYTES)])
+    second_response = upload(test_client, target_event.id, [("IMG_0001.jpg", PNG_BYTES)])
+
+    # 프론트 입장에서는 두 번 다 올라간 것 (재시도가 실패로 보이면 안 됨)
+    assert first_response.json()["data"] == {"uploaded": 1, "failed": []}
+    assert second_response.json()["data"] == {"uploaded": 1, "failed": []}
+    assert len(event_photos(database_session, target_event)) == 1
+    assert (nas_root / f"event{target_event.id}" / "IMG_0001.jpg").read_bytes() == PNG_BYTES
+
+
+def test_same_file_name_twice_in_one_request_adds_one_row(database_session, nas_root):
+    target_event = create_event(database_session)
+
+    response = upload(build_test_client(database_session), target_event.id,
+                      [("IMG_0001.jpg", JPEG_BYTES), ("IMG_0001.jpg", JPEG_BYTES)])
+
+    assert response.json()["data"]["uploaded"] == 2
+    assert len(event_photos(database_session, target_event)) == 1
+
+
+def test_reupload_keeps_photo_that_worker_already_processed(database_session, nas_root):
+    # 이미 추출된 사진은 같은 사진이므로 다시 처리하지 않음 (상태·얼굴 그대로)
+    target_event = create_event(database_session)
+    extracted_photo = add_photo(database_session, target_event, "IMG_0001.jpg", PhotoStatus.EXTRACTED)
+
+    upload(build_test_client(database_session), target_event.id, [("IMG_0001.jpg", JPEG_BYTES)])
+
+    database_session.refresh(extracted_photo)
+    assert extracted_photo.status == PhotoStatus.EXTRACTED
+    assert len(event_photos(database_session, target_event)) == 1
+
+
+def test_reupload_of_failed_photo_queues_it_again(database_session, nas_root):
+    # failed(손상 파일 등)였던 사진을 다시 올리면 새 파일로 다시 처리하도록 uploaded로 되돌림
+    target_event = create_event(database_session)
+    failed_photo = add_photo(database_session, target_event, "IMG_0001.jpg", PhotoStatus.FAILED)
+    failed_photo.worker_id = "worker-1"
+    database_session.flush()
+
+    upload(build_test_client(database_session), target_event.id, [("IMG_0001.jpg", JPEG_BYTES)])
+
+    database_session.refresh(failed_photo)
+    assert failed_photo.status == PhotoStatus.UPLOADED
+    assert failed_photo.worker_id is None
+    assert failed_photo.claimed_at is None
+    assert len(event_photos(database_session, target_event)) == 1
+
+
+def test_same_file_name_in_different_events_is_separate_photo(database_session, nas_root):
+    first_event = create_event(database_session, access_code="EVT001")
+    second_event = create_event(database_session, access_code="EVT002")
+    test_client = build_test_client(database_session)
+
+    upload(test_client, first_event.id, [("IMG_0001.jpg", JPEG_BYTES)])
+    upload(test_client, second_event.id, [("IMG_0001.jpg", JPEG_BYTES)])
+
+    assert len(event_photos(database_session, first_event)) == 1
+    assert len(event_photos(database_session, second_event)) == 1
+
+
 def test_upload_to_unknown_event_fails(database_session, nas_root):
     response = build_test_client(database_session).post(
         "/api/admin/events/999999999/photos", headers=admin_headers(),
