@@ -1,7 +1,7 @@
 // 가짜 토큰. 실제 JWT처럼 점(.)으로 나뉜 세 부분이지만 서명은 없다. 내용만 읽어 권한·만료를 흉내 낸다.
 
-/** 토큰 유효 시간(초). 백엔드 기본값(docs/api.md #1의 expiresIn)과 같게 */
-export const mockTokenLifetimeSeconds = 3600
+/** 토큰 유효 시간(초). 백엔드 기본값(docs/api.md #1의 expiresIn, 12시간)과 같게 */
+export const mockTokenLifetimeSeconds = 43200
 
 export type MockTokenPayload = {
   role: 'admin' | 'participant'

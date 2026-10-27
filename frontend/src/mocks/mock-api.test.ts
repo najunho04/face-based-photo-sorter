@@ -63,11 +63,11 @@ async function catchApiError(request: Promise<unknown>): Promise<ApiError> {
 }
 
 describe('#1 관리자 로그인', () => {
-  it('테스트 계정이면 토큰과 만료 시간(초)을 준다', async () => {
+  it('테스트 계정이면 토큰과 만료 시간(초)을 준다(실제 백엔드와 같은 12시간)', async () => {
     const login = await loginAdministrator(mockAdministratorAccount)
 
     expect(login.accessToken).toEqual(expect.any(String))
-    expect(login.expiresIn).toBe(3600)
+    expect(login.expiresIn).toBe(43200)
   })
 
   it('비밀번호가 다르면 LOGIN_FAILED(401)', async () => {
