@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.dependencies import require_event_participant
 from core.error_codes import ApplicationError, ErrorCode
+from core.object_storage import ObjectStorage, get_object_storage
 from core.responses import CamelCaseModel, success_response
 from core.security import TokenPayload
 from database.connection import get_database_session
@@ -33,7 +34,7 @@ class BoundingBox(CamelCaseModel):
 
 
 class RepresentativeFace(CamelCaseModel):
-    url: str | None
+    url: str
     bbox: BoundingBox
 
 
@@ -58,10 +59,15 @@ def get_face_analyzer():
     return FaceAnalyzer()
 
 
-def get_photo_url_builder() -> PhotoUrlBuilder:
-    # 공용 Object Storage 클라이언트(core)가 생기면 photo.object_key로 Pre-signed URL을 만들도록 교체
-    # 그 전까지는 URL 없이 응답 (테스트에서는 가짜 URL로 교체해서 검증)
-    return lambda photo: None
+def get_photo_url_builder(object_storage: ObjectStorage = Depends(get_object_storage)) -> PhotoUrlBuilder:
+    # 저장소를 의존성으로 받음: 테스트에서는 진짜 NCP 대신 가짜 저장소를 넣을 수 있음
+    # 보관 전이거나 보관에서 빠진 사진(object_key 없음)은 URL을 만들 수 없음
+    def build_photo_url(photo: Photo) -> str | None:
+        if photo.object_key is None:
+            return None
+        return object_storage.create_presigned_url(photo.object_key)
+
+    return build_photo_url
 
 
 @router.post("/api/events/{event_id}/match")
@@ -96,10 +102,13 @@ def match_selfie_endpoint(
         representative_photo = photo_by_id.get(matched_person.representative_photo_id)
         representative_face = None
         if representative_photo is not None and matched_person.representative_bounding_box is not None:
-            representative_face = RepresentativeFace(
-                url=build_photo_url(representative_photo),
-                bbox=BoundingBox(**matched_person.representative_bounding_box),
-            )
+            photo_url = build_photo_url(representative_photo)
+            # 사람 폴더 목록(API 10)과 같은 규칙: 사진 URL이 없으면 repFace 자체를 null → 프론트는 기본 아이콘
+            if photo_url is not None:
+                representative_face = RepresentativeFace(
+                    url=photo_url,
+                    bbox=BoundingBox(**matched_person.representative_bounding_box),
+                )
         candidates.append(MatchCandidate(
             person_id=matched_person.person_id,
             label=matched_person.label,

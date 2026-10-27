@@ -18,7 +18,10 @@ from extraction.face_analyzer import DetectedFace
 from matching.router import MAXIMUM_SELFIE_BYTES, get_face_analyzer, get_photo_url_builder, router
 
 SELFIE_EMBEDDING = numpy.eye(1, EMBEDDING_DIMENSION, 0, dtype=numpy.float32)[0]
-
+class FakeObjectStorage:
+    # 진짜 NCP 대신: 서명 계산 없이 object_key가 들어간 가짜 URL만 돌려줌
+    def create_presigned_url(self, object_key: str) -> str:
+        return f"https://storage.example.com/{object_key}?signature=fake"
 
 class FakeFaceAnalyzer:
     def __init__(self, detected_faces):
@@ -169,3 +172,35 @@ def test_match_without_face_returns_face_not_detected(database_session):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "FACE_NOT_DETECTED"
+
+def test_photo_url_builder_returns_presigned_url_for_archived_photo():
+    build_photo_url = get_photo_url_builder(FakeObjectStorage())
+    photo = Photo(file_name="IMG_0001.jpg", nas_path="event1/IMG_0001.jpg", object_key="event1/IMG_0001.jpg")
+
+    assert build_photo_url(photo) == "https://storage.example.com/event1/IMG_0001.jpg?signature=fake"
+
+
+def test_photo_url_builder_returns_none_for_photo_not_archived_yet():
+    # 보관 전 사진은 object_key가 없어서 URL을 만들 수 없음
+    build_photo_url = get_photo_url_builder(FakeObjectStorage())
+    photo = Photo(file_name="IMG_0001.jpg", nas_path="event1/IMG_0001.jpg", object_key=None)
+
+    assert build_photo_url(photo) is None
+
+
+def test_match_returns_null_rep_face_when_photo_url_is_unavailable(database_session):
+    # 사람 폴더 목록(API 10)과 같은 규칙: 대표 얼굴 사진을 보여줄 수 없으면 repFace 자체가 null
+    event, person, _ = create_open_event_with_person(database_session)
+    test_client = build_test_client(database_session, FakeFaceAnalyzer([matching_face()]))
+    test_client.app.dependency_overrides[get_photo_url_builder] = lambda: (lambda photo: None)
+
+    response = test_client.post(
+        f"/api/events/{event.id}/match",
+        headers=participant_headers(event.id),
+        files={"selfie": ("selfie.png", png_bytes(), "image/png")},
+    )
+
+    assert response.status_code == 200
+    candidate = response.json()["data"]["candidates"][0]
+    assert candidate["personId"] == person.id
+    assert candidate["repFace"] is None
