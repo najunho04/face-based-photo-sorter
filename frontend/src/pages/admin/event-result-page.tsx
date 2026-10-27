@@ -134,10 +134,15 @@ export default function EventResultPage() {
             onRetry={() => void personsQuery.refetch()}
           />
         ) : personsQuery.data.persons.length === 0 ? (
+          // 숨긴 폴더가 있을 때만 '끄면 볼 수 있다'고 안내하고, 아예 0명이면 얼굴을 못 찾았다고 알린다
           <EmptyState
             icon={UsersRoundIcon}
             title="묶인 사람이 없어요"
-            description="'사진 한 장에만 나온 사람 숨기기'를 끄면 모든 폴더를 볼 수 있어요."
+            description={
+              hidesSinglePhotoPersons && (progress.personCount ?? 0) > 0
+                ? "'사진 한 장에만 나온 사람 숨기기'를 끄면 모든 폴더를 볼 수 있어요."
+                : '올린 사진에서 얼굴을 찾지 못했어요. 참가자는 전체 사진에서 직접 찾을 수 있어요.'
+            }
           />
         ) : (
           <ul className="grid grid-cols-3 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:gap-3">
