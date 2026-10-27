@@ -1,6 +1,7 @@
 # API 명세
 
-> 출처: Notion [API 명세](https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d) (2026-10-23 기준). 원본이 바뀌면 이 문서도 갱신.
+> 출처: Notion [API 명세](https://app.notion.com/p/API-4020ea4df7858001a2a6f14efcfd123d) (2026-10-26 동기화). 원본이 바뀌면 이 문서도 갱신.
+> **구현 중 정한 규칙**(아래 "구현 규칙" 줄)은 2026-10-24·25 추가, Notion "5. 구현 규칙"에도 반영 (2026-10-26).
 
 ## 공통
 
@@ -50,9 +51,11 @@
 // req
 { "loginId": "admin", "password": "<비밀번호>" }
 // res.data
-{ "accessToken": "eyJhbGciOi...", "expiresIn": 3600 }
+{ "accessToken": "eyJhbGciOi...", "expiresIn": 43200 }
 ```
 에러: `LOGIN_FAILED`, `INVALID_REQUEST`
+
+구현 규칙: 관리자·참가자 토큰 모두 12시간(43200초) 만료 (`ACCESS_TOKEN_EXPIRATION_SECONDS`로 변경 가능).
 
 ### 2. 행사 생성 `POST /api/admin/events`
 인증코드 발급. 프론트가 `accessCode`로 QR을 그림.
@@ -64,6 +67,8 @@
 ```
 에러: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`
 
+구현 규칙: `name`은 앞뒤 공백 제거 후 1~100자. `accessCode`는 대문자+숫자 6자리, 다른 행사와 겹치지 않게 생성.
+
 ### 3. 사진 업로드 `POST /api/admin/events/{eventId}/photos`
 `multipart/form-data`, 필드 `files` (여러 장). NAS 저장 + `photos` 행 생성(`status=uploaded`). 프론트는 요청당 3~5장씩 나눠 전송. 파일 단위 실패는 `failed`에 담고 나머지는 성공 처리.
 ```json
@@ -72,13 +77,15 @@
 ```
 에러: `EVENT_NOT_FOUND`, `INVALID_STATUS`(완료 후 추가 업로드), `UNSUPPORTED_FILE`, `FILE_TOO_LARGE`
 
+구현 규칙: `UNSUPPORTED_FILE`·`FILE_TOO_LARGE`는 요청 전체 실패가 아니라 `failed[].reason`으로 옴. 사진 1장 최대 20MB. jpg·png 여부는 확장자가 아니라 파일 내용으로 판단. 파일 이름은 경로를 뺀 마지막 부분만 쓰고, 같은 행사에 같은 이름을 다시 올리면 NAS 파일을 덮어씀.
+
 ### 4. 업로드 완료 `POST /api/admin/events/{eventId}/upload-complete`
 요청 바디 없음. `events.status`를 `extracting`으로 바꾸고 이후 업로드 차단.
 ```json
 // res.data
 { "eventId": 1, "status": "extracting", "totalPhotos": 100 }
 ```
-에러: `EVENT_NOT_FOUND`, `INVALID_STATUS`(이미 완료)
+에러: `EVENT_NOT_FOUND`, `INVALID_STATUS`(이미 완료, 또는 올린 사진이 0장)
 
 ### 5. 진행 상황 조회 `GET /api/admin/events/{eventId}`
 관리자 화면이 몇 초마다 폴링. `status=open`이면 분류 완료.
@@ -93,6 +100,8 @@
 ```
 에러: `EVENT_NOT_FOUND`
 
+구현 규칙: `photos.total`은 아직 워커가 가져가지 않은 `uploaded` 사진도 포함.
+
 ### 6. 참가자 입장 `POST /api/events/join`
 인증코드(QR 값 또는 텍스트)로 참가자 토큰 발급. `status≠open`이면 프론트가 "사진 정리 중" 화면 표시.
 ```json
@@ -103,6 +112,8 @@
 ```
 에러: `INVALID_ACCESS_CODE`, `INVALID_REQUEST`
 
+구현 규칙: `accessCode`의 공백·하이픈은 무시하고 대소문자를 구분하지 않음 (`a7k-2q9` = `A7K2Q9`, 프론트와 같은 규칙).
+
 ### 7. 전체 사진 보기 `GET /api/events/{eventId}/photos`
 쿼리: `page`(기본 1), `size`(기본 30).
 ```json
@@ -112,6 +123,8 @@
 }
 ```
 에러: `EVENT_NOT_FOUND`, `FORBIDDEN`
+
+구현 규칙: 참가자 토큰만 (관리자 토큰은 `FORBIDDEN`). `status≠open`이면 `EVENT_NOT_READY`. `page`는 1 이상, `size`는 1~100 (벗어나면 `INVALID_REQUEST`). 사진 id(업로드) 순서. Object Storage에 보관된 사진만 목록·`total`에 포함 (`failed`·보관 누락 사진 제외).
 
 ### 8. 셀카 매칭 `POST /api/events/{eventId}/match`
 `multipart/form-data`, 필드 `selfie`. 웹서버가 동기로 얼굴 검출·벡터 추출 → `persons.centroid`와 코사인 유사도 → 기준값 이상 상위 0~3개.
@@ -142,6 +155,8 @@
 "전체 다운로드"는 프론트가 `downloadUrl`을 차례로 받음 (ZIP 없음).
 에러: `EVENT_NOT_READY`, `PERSON_NOT_FOUND`, `FORBIDDEN`
 
+구현 규칙: 사진 id 순서, 한 사진에 같은 사람 얼굴이 여러 개여도 한 번만. `downloadUrl`은 `Content-Disposition: attachment; filename*=UTF-8''<파일 이름>`으로 내려와 원래 이름으로 저장됨. 다른 행사의 `personId`는 `PERSON_NOT_FOUND`.
+
 ### 10. 사람 폴더 목록 `GET /api/events/{eventId}/persons`
 쿼리: `minPhotos`(선택, 기본 1) — 사진 수가 이 값 이상인 폴더만 (배경에 한 번 찍힌 사람 숨김). `photoCount` 내림차순.
 ```json
@@ -154,6 +169,8 @@
 }
 ```
 에러: `EVENT_NOT_READY`, `EVENT_NOT_FOUND`, `FORBIDDEN`
+
+구현 규칙: `minPhotos`는 1 이상 (0 이하면 `INVALID_REQUEST`). `photoCount`는 보관된 서로 다른 사진 수 (API 9의 `total`과 같음), 같으면 `personId` 순. `repFace`는 대표 얼굴이 없거나 그 사진이 보관되지 않았으면 `null` (API 8도 같은 규칙).
 
 ## 에러코드
 

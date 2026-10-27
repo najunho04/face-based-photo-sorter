@@ -18,6 +18,7 @@ dependencies = [
     # Object Storage (NCP는 S3 호환)
     "boto3>=1.35",
     "numpy>=1.26",               # 벡터 연산 (pgvector 변환, 분류)
+    "scipy>=1.13",               # 분류: 계층적 군집 (scipy.cluster.hierarchy)
     # 얼굴 검출·임베딩 (extraction/, matching/): InsightFace buffalo_l, onnxruntime은 insightface가 함께 설치
     # OpenCV는 서버에 화면이 없어 GUI 기능을 뺀 headless 버전 사용
     "insightface>=2.1",
@@ -28,6 +29,7 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "httpx2>=2.16.0",            # FastAPI TestClient (Starlette가 httpx 대신 요구)
+    "moto[s3]>=5",               # Object Storage(S3 호환)를 메모리에서 흉내 (테스트에 NCP 키 불필요)
 ]
 
 [tool.pytest.ini_options]
