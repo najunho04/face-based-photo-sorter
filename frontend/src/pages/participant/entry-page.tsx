@@ -118,6 +118,17 @@ export default function EntryPage() {
           입장하기
         </Button>
 
+        {/* PC: 입장 카드 안 [입장하기] 바로 아래 오른쪽에도 관리자 페이지 안내를 둔다(머리글 오른쪽 링크와 같은 곳으로 감) */}
+        <div className="mt-5 hidden items-center justify-end gap-1.5 text-small lg:flex">
+          <span className="text-muted-foreground">행사를 주최한 관리자인가요?</span>
+          <Link
+            to={paths.administratorLogin()}
+            className="touch-target flex items-center font-semibold text-primary"
+          >
+            관리자 페이지
+          </Link>
+        </div>
+
         {/* QR 안내는 처음 화면에서만. 코드가 틀렸을 때는 오류 문구에 집중하도록 숨긴다(시안 ①-2) */}
         {!errorMessage && (
           <div className="mt-7 flex items-center gap-3 rounded-md bg-muted p-4 lg:hidden">
