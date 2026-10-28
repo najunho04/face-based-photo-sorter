@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사람별 폴더</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --line: #e4e1da; --text: #1f1d1a; --muted: #6f6a61;
+    --accent: #c2410c; --accent-soft: #fde8dc; --chosen: #c2410c; --dim: #b9b4ab; --good: #15803d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171614; --panel: #201f1c; --line: #34322e; --text: #ece9e3; --muted: #a29d93;
+            --accent: #fb923c; --accent-soft: #3a261a; --chosen: #fb923c; --dim: #5b5750; --good: #4ade80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+           display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .meta { color: var(--muted); }
+  .layout { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 53px); }
+  aside { border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
+  .tree-head { position: sticky; top: 0; background: var(--panel); padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
+  .root { font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
+  .filters { display: flex; gap: 6px; margin-top: 8px; }
+  .filters button { border: 1px solid var(--line); background: transparent; color: var(--text);
+                    border-radius: 999px; padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+  .filters button.on { background: var(--text); color: var(--panel); border-color: var(--text); }
+  .folder { display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 26px; cursor: pointer;
+            border-left: 3px solid transparent; }
+  .folder:hover { background: var(--bg); }
+  .folder.selected { background: var(--accent-soft); border-left-color: var(--accent); }
+  .folder .name { font-family: ui-monospace, Consolas, monospace; flex: 1; }
+  .folder .count { color: var(--muted); font-size: 12px; }
+  .face { border-radius: 50%; background-repeat: no-repeat; background-color: var(--line); flex: none; }
+  main { overflow-y: auto; padding: 20px 24px 40px; }
+  .crumb { font-family: ui-monospace, Consolas, monospace; color: var(--muted); margin-bottom: 14px; }
+  .crumb b { color: var(--text); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+  .summary { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .summary .face { border-radius: 14px; outline: 3px solid var(--chosen); outline-offset: 2px; }
+  .summary h2 { margin: 0 0 4px; font-size: 22px; font-family: ui-monospace, Consolas, monospace; }
+  .why { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+  .why b { color: var(--text); }
+  h3 { font-size: 14px; margin: 0 0 10px; }
+  .hint { color: var(--muted); font-size: 12px; font-weight: normal; }
+  .candidates { display: flex; gap: 10px; flex-wrap: wrap; }
+  .candidate { width: 84px; text-align: center; font-size: 11px; }
+  .candidate .face { border-radius: 10px; margin: 0 auto 4px; }
+  .candidate.chosen .face { outline: 3px solid var(--chosen); outline-offset: 1px; }
+  .candidate.excluded .face { opacity: .35; filter: grayscale(1); }
+  .candidate .tag { display: block; color: var(--muted); }
+  .candidate.chosen .tag { color: var(--chosen); font-weight: 600; }
+  .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .file { margin: 0; }
+  .thumb { position: relative; border-radius: 8px; overflow: hidden; background: var(--line); }
+  .thumb img { display: block; width: 100%; height: auto; }
+  .box { position: absolute; border: 2px solid var(--good); border-radius: 3px; }
+  .box.chosen { border-color: var(--chosen); border-width: 3px; }
+  .file figcaption { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted);
+                     margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .more { margin-top: 12px; }
+  .more button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line);
+                 background: var(--panel); color: var(--text); cursor: pointer; }
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    aside { max-height: 40vh; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>사람별 폴더</h1>
+  <span class="meta" id="meta"></span>
+</header>
+<div class="layout">
+  <aside>
+    <div class="tree-head">
+      <div class="root" id="root"></div>
+      <div class="filters" id="filters"></div>
+    </div>
+    <div id="folders"></div>
+  </aside>
+  <main id="detail"></main>
+</div>
+<script>
+const DATA = __PAGE_DATA__;
+const PAGE_SIZE = 60;
+const photoUrls = new Map();
+
+function photoUrl(photoId) {
+  // 썸네일은 base64로 들어 있음 → 한 번만 Blob URL로 바꿔 여러 곳에서 재사용
+  if (!photoUrls.has(photoId)) {
+    const bytes = Uint8Array.from(atob(DATA.photos[photoId].data), c => c.charCodeAt(0));
+    photoUrls.set(photoId, URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" })));
+  }
+  return photoUrls.get(photoId);
+}
+
+function faceCrop(face, size) {
+  // 프론트가 API 10의 repFace(원본 URL + bbox)로 하는 것과 같은 방식: 사진을 배경으로 깔고 얼굴 부분만 보이게 이동
+  const photo = DATA.photos[face.photoId];
+  const { x, y, w, h } = face.bbox;
+  const side = Math.max(w, h) * 1.15;                 // 얼굴 주변을 조금 여유 있게, 정사각형으로
+  const scale = size / side;
+  const left = x + w / 2 - side / 2, top = y + h / 2 - side / 2;
+  const element = document.createElement("div");
+  element.className = "face";
+  Object.assign(element.style, {
+    width: size + "px", height: size + "px",
+    backgroundImage: `url(${photoUrl(face.photoId)})`,
+    backgroundSize: `${photo.width * scale}px ${photo.height * scale}px`,
+    backgroundPosition: `${-left * scale}px ${-top * scale}px`,
+  });
+  return element;
+}
+
+const representativeFace = person => person.faces.find(face => face.id === person.representativeFaceId);
+let minimumPhotos = 2;
+let selectedPersonId = null;
+
+function renderTree() {
+  const visible = DATA.persons.filter(person => person.photoCount >= minimumPhotos);
+  document.getElementById("root").textContent = `📂 event${DATA.event.id}/  (${visible.length}개 폴더)`;
+  const filters = document.getElementById("filters");
+  filters.replaceChildren(...[[2, "2장 이상"], [5, "5장 이상"], [1, "전체"]].map(([value, text]) => {
+    const button = document.createElement("button");
+    button.textContent = text;
+    button.className = value === minimumPhotos ? "on" : "";
+    button.onclick = () => { minimumPhotos = value; renderTree(); };
+    return button;
+  }));
+  const folders = document.getElementById("folders");
+  folders.replaceChildren(...visible.map(person => {
+    const row = document.createElement("div");
+    row.className = "folder" + (person.id === selectedPersonId ? " selected" : "");
+    row.append(faceCrop(representativeFace(person), 34));
+    row.insertAdjacentHTML("beforeend",
+      `<span class="name">📁 ${person.label}/</span><span class="count">${person.photoCount}장</span>`);
+    row.onclick = () => select(person.id);
+    return row;
+  }));
+}
+
+function select(personId) {
+  selectedPersonId = personId;
+  renderTree();
+  renderDetail(DATA.persons.find(person => person.id === personId));
+  document.getElementById("detail").scrollTop = 0;
+}
+
+function renderDetail(person) {
+  const detail = document.getElementById("detail");
+  const chosen = representativeFace(person);
+  const candidates = person.faces.filter(face => face.isCandidate);
+  const ratio = Math.round(DATA.minimumAreaRatio * 100);
+
+  detail.innerHTML = `<div class="crumb">event${DATA.event.id} / <b>${person.label}/</b></div>`;
+
+  // 1) 폴더 요약 + 대표 얼굴이 뽑힌 이유
+  const summary = document.createElement("section");
+  summary.className = "card summary";
+  summary.append(faceCrop(chosen, 132));
+  summary.insertAdjacentHTML("beforeend", `<div>
+    <h2>${person.label}</h2>
+    <div>사진 ${person.photoCount}장 · 얼굴 ${person.faces.length}개 · 대표 얼굴 = ${DATA.photos[chosen.photoId].name}</div>
+    <ol class="why">
+      <li>얼굴 ${person.faces.length}개 중 가장 큰 얼굴(${person.largestArea.toLocaleString()}px²)의 ${ratio}% 이상인 얼굴만 후보 → <b>${candidates.length}개</b></li>
+      <li>후보 중 이 사람 평균 얼굴(centroid)과 가장 닮은 얼굴 → <b>유사도 ${chosen.similarity.toFixed(3)}</b></li>
+    </ol>
+  </div>`);
+  detail.append(summary);
+
+  // 2) 후보 비교: 크기 기준을 통과한 후보(유사도 높은 순) → 유사도는 높지만 작아서 빠진 얼굴(흐리게)
+  const bySimilarity = (a, b) => b.similarity - a.similarity;
+  const excluded = person.faces.filter(face => !face.isCandidate).sort(bySimilarity).slice(0, 6);
+  const ranked = [...candidates.sort(bySimilarity).slice(0, 10), ...excluded];
+  const candidateCard = document.createElement("section");
+  candidateCard.className = "card";
+  candidateCard.innerHTML = `<h3>대표 얼굴 후보 비교 <span class="hint">숫자 = centroid 유사도, % = 가장 큰 얼굴 대비 크기 · 앞쪽 = 후보, 흐린 얼굴 = 유사도는 높지만 작아서 제외</span></h3>`;
+  const strip = document.createElement("div");
+  strip.className = "candidates";
+  for (const face of ranked) {
+    const item = document.createElement("div");
+    const isChosen = face.id === chosen.id;
+    item.className = "candidate" + (isChosen ? " chosen" : face.isCandidate ? "" : " excluded");
+    item.append(faceCrop(face, 72));
+    const tag = isChosen ? "대표" : face.isCandidate ? "후보" : "작아서 제외";
+    item.insertAdjacentHTML("beforeend",
+      `<span>${face.similarity.toFixed(3)}</span><span class="tag">${tag} · ${Math.round(face.area / person.largestArea * 100)}%</span>`);
+    strip.append(item);
+  }
+  candidateCard.append(strip);
+  detail.append(candidateCard);
+
+  // 3) 폴더 안 사진 파일: 이 사람 얼굴 위치를 박스로 (주황 = 대표 얼굴)
+  const facesByPhoto = new Map();
+  for (const face of person.faces) facesByPhoto.set(face.photoId, [...(facesByPhoto.get(face.photoId) || []), face]);
+  const photoIds = [...facesByPhoto.keys()].sort((a, b) => a - b);
+  const filesCard = document.createElement("section");
+  filesCard.className = "card";
+  filesCard.innerHTML = `<h3>${person.label}/ 안의 사진 ${photoIds.length}장 <span class="hint">초록 박스 = 이 사람 얼굴, 주황 = 대표 얼굴</span></h3>`;
+  const grid = document.createElement("div");
+  grid.className = "files";
+  filesCard.append(grid);
+  const more = document.createElement("div");
+  more.className = "more";
+  filesCard.append(more);
+  detail.append(filesCard);
+
+  let shown = 0;
+  function showMore() {
+    for (const photoId of photoIds.slice(shown, shown + PAGE_SIZE)) {
+      const photo = DATA.photos[photoId];
+      const figure = document.createElement("figure");
+      figure.className = "file";
+      const thumb = document.createElement("div");
+      thumb.className = "thumb";
+      thumb.innerHTML = `<img loading="lazy" alt="${photo.name}" src="${photoUrl(photoId)}">`;
+      for (const face of facesByPhoto.get(photoId)) {
+        const box = document.createElement("div");
+        box.className = "box" + (face.id === chosen.id ? " chosen" : "");
+        Object.assign(box.style, {
+          left: face.bbox.x / photo.width * 100 + "%", top: face.bbox.y / photo.height * 100 + "%",
+          width: face.bbox.w / photo.width * 100 + "%", height: face.bbox.h / photo.height * 100 + "%",
+        });
+        thumb.append(box);
+      }
+      figure.append(thumb);
+      figure.insertAdjacentHTML("beforeend", `<figcaption>${photo.name}</figcaption>`);
+      grid.append(figure);
+    }
+    shown = Math.min(shown + PAGE_SIZE, photoIds.length);
+    more.replaceChildren();
+    if (shown < photoIds.length) {
+      const button = document.createElement("button");
+      button.textContent = `더 보기 (${shown}/${photoIds.length})`;
+      button.onclick = showMore;
+      more.append(button);
+    }
+  }
+  showMore();
+}
+
+document.getElementById("meta").textContent =
+  `${DATA.event.name} · event${DATA.event.id} · ${DATA.event.status} · 사람 ${DATA.persons.length}명 · 사진 ${Object.keys(DATA.photos).length}장`;
+renderTree();
+select(DATA.persons[0].id);
+</script>
+</body>
+</html>
