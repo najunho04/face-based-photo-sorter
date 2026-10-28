@@ -34,9 +34,19 @@ export default function PersonFolderPage() {
   const person = personsQuery.data?.persons.find((candidate) => candidate.personId === personId)
   const personName = photosQuery.data ? formatPersonName(photosQuery.data.label) : '사람 폴더'
   const eventName = progressQuery.data?.name ?? ''
+  // 대표 얼굴(사람 목록을 받기 전·얼굴이 없으면 사람 아이콘)과 장 수 안내. PC는 머리글 제목 옆, 휴대폰은 본문 첫 줄에 둔다
+  const representativeFace = (
+    <FaceCrop
+      imageUrl={person?.repFace?.url ?? null}
+      faceBox={person?.repFace?.bbox ?? null}
+      size={64}
+    />
+  )
+  const folderSummary = `${photosQuery.data ? `사진 ${photosQuery.data.total}장 · ` : ''}참가자에게도 같은 사진이 보여요`
 
   return (
     <>
+      {/* 시안 A7: 경로 줄 아래 20px에 얼굴, 그 오른쪽에 큰 제목과 장 수 안내 */}
       <AdministratorPageHeader
         title={personName}
         eventName={eventName}
@@ -46,21 +56,14 @@ export default function PersonFolderPage() {
           { label: eventName, to: paths.administratorEventResult(eventId) },
           { label: personName },
         ]}
+        leadingVisual={representativeFace}
+        description={folderSummary}
       />
       <AdministratorPageBody>
-        <div className="flex items-center gap-4">
-          {person && (
-            <FaceCrop
-              imageUrl={person.repFace?.url ?? null}
-              faceBox={person.repFace?.bbox ?? null}
-              size={64}
-            />
-          )}
-          {/* 이름은 머리말 제목에 있으니 여기서는 장 수와 안내만 보여 준다 */}
-          <span className="text-small text-muted-foreground">
-            {photosQuery.data ? `사진 ${photosQuery.data.total}장 · ` : ''}참가자에게도 같은 사진이
-            보여요
-          </span>
+        {/* 휴대폰은 위쪽 머리글에 제목이 있으니 여기서는 얼굴과 장 수 안내만 보여 준다 */}
+        <div className="flex items-center gap-4 lg:hidden">
+          {representativeFace}
+          <span className="text-small text-muted-foreground">{folderSummary}</span>
         </div>
 
         {photosQuery.isPending ? (
@@ -80,7 +83,7 @@ export default function PersonFolderPage() {
           <EmptyState
             icon={ImagesIcon}
             title="이 사람이 나온 사진이 없어요"
-            description="분류 결과로 돌아가 다른 사람 폴더를 열어 주세요."
+            description="분류 결과로 돌아가 다른 사람 폴더를 열어주세요."
           />
         ) : (
           <PhotoGrid>

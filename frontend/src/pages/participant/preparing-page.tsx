@@ -66,7 +66,7 @@ export default function PreparingPage() {
   )
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+40px)] pb-[calc(env(safe-area-inset-bottom)+24px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:py-16">
+    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+16px)] pb-[calc(env(safe-area-inset-bottom)+32px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:py-16">
       <div className="flex items-center justify-between gap-3 lg:hidden">
         <AppLogo size="medium" />
         <span className="truncate rounded-full bg-secondary px-2.5 py-1 text-caption text-secondary-foreground">

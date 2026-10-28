@@ -78,7 +78,8 @@ export function AdministratorSideMenu({ className }: { className?: string }) {
             to={menuItem.to}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 items-center rounded-sm px-3 text-small transition-colors',
+              // 보이는 높이는 시안(위아래 10px)대로, 눌리는 영역만 44px
+              'touch-target flex items-center rounded-sm px-3 py-2.5 text-small transition-colors',
               isActive
                 ? 'bg-secondary font-semibold text-primary-hover'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -121,8 +122,16 @@ export function AdministratorMobileHeader({
   backTo,
   action,
 }: AdministratorMobileHeaderProps) {
+  // 위 여백 = 아이폰 위쪽 안전 영역 + (시안 값 − 상태 막대 40px). 시안: 뒤로 가기 머리글(M2·M3) 48/12px, 로고 머리글(M1) 52/16px
   return (
-    <header className="flex items-center gap-1 border-b border-border bg-background px-3 pt-[calc(env(safe-area-inset-top)+12px)] pb-3 lg:hidden">
+    <header
+      className={cn(
+        'flex items-center gap-1 border-b border-border bg-background px-3 lg:hidden',
+        backTo
+          ? 'pt-[calc(env(safe-area-inset-top)+8px)] pb-3'
+          : 'pt-[calc(env(safe-area-inset-top)+12px)] pb-4',
+      )}
+    >
       {backTo ? (
         <>
           <Button asChild variant="ghost" size="icon" aria-label="뒤로">

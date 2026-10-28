@@ -21,6 +21,7 @@ import { ZoomablePhoto } from '@/features/photo-viewer/zoomable-photo'
 import { useEventNotReadyRedirect } from '@/pages/participant/use-event-not-ready-redirect'
 import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
+import { observeToastClearance } from '@/shared/lib/toast-clearance'
 import { reducedMotionMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
 import { cn } from '@/shared/lib/utils'
@@ -271,7 +272,14 @@ function ViewerCarousel({
       onClose={onClose}
       counter={`${currentIndex + 1} / ${Math.max(totalCount, photos.length)}`}
       footer={
-        <div className="grid grid-cols-2 px-16 pt-3 pb-[calc(env(safe-area-inset-bottom)+20px)] lg:mx-auto lg:w-[320px]">
+        // 공유를 못 쓰는 브라우저(PC 등)는 [저장] 하나만 가운데에 둔다. 토스트는 이 막대 위에 뜬다
+        <div
+          ref={observeToastClearance}
+          className={cn(
+            'grid px-16 pt-3 pb-[calc(env(safe-area-inset-bottom)+36px)] lg:mx-auto lg:w-[320px]',
+            canShare ? 'grid-cols-2' : 'grid-cols-1',
+          )}
+        >
           <ViewerActionButton
             icon={DownloadIcon}
             label="저장"

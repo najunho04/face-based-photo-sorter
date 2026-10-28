@@ -1,5 +1,5 @@
 import { FolderUpIcon, ImageIcon, UploadIcon } from 'lucide-react'
-import { useId, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useId, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { cn } from '@/shared/lib/utils'
 import { buttonVariants } from '@/shared/ui/button-variants'
 
@@ -7,11 +7,20 @@ import { buttonVariants } from '@/shared/ui/button-variants'
 const acceptedImageTypes = 'image/jpeg,image/png,image/heic,image/heif,.heic,.heif'
 
 // 사진 끌어다 놓기·고르기(시안 A4, 명세서 UploadDropzone): 점선 상자, 끌어올리면 인디고 점선 + 연한 배경.
-// 폴더를 통째로 끌어다 놓거나 [폴더 고르기]로 고를 수 있다
-export function UploadDropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
+// 상자 아무 곳이나 누르면 사진 고르기 창이 열린다. 폴더는 끌어다 놓거나 [폴더 고르기]로 고른다
+// (상자를 누르는 것만으로는 폴더를 고를 수 없어서 버튼을 따로 둔다, 시안 비교 결정 2026-10-28)
+export function UploadDropzone({
+  onFiles,
+  hasPhotos,
+}: {
+  onFiles: (files: File[]) => void
+  /** 이미 고르거나 올린 사진이 있는지. 있으면 제목이 '사진 더 추가하기' */
+  hasPhotos: boolean
+}) {
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const photoInputId = useId()
   const folderInputId = useId()
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   async function handleDrop(dropEvent: DragEvent) {
     dropEvent.preventDefault()
@@ -34,14 +43,23 @@ export function UploadDropzone({ onFiles }: { onFiles: (files: File[]) => void }
       }}
       onDragLeave={() => setIsDraggingOver(false)}
       onDrop={(dropEvent) => void handleDrop(dropEvent)}
+      // 버튼(label)을 누른 경우는 그 버튼이 알아서 창을 열므로, 상자의 빈 곳을 누른 경우만 사진 고르기를 연다
+      onClick={(clickEvent) => {
+        if ((clickEvent.target as HTMLElement).closest('label, input')) return
+        photoInputRef.current?.click()
+      }}
       className={cn(
-        'flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors',
+        'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 border-dashed p-6 text-center transition-colors',
         isDraggingOver ? 'border-primary bg-secondary' : 'border-input bg-background',
       )}
     >
       <UploadIcon className="size-8 text-primary" aria-hidden="true" />
-      <span className="text-[15px] font-semibold">사진이나 폴더를 끌어다 놓으세요</span>
-      <span className="text-[13px] text-muted-foreground">JPG, PNG · 크기를 줄여서 올려요</span>
+      <span className="text-[15px] font-semibold">
+        {hasPhotos ? '사진 더 추가하기' : '사진 추가하기'}
+      </span>
+      <span className="text-[13px] text-muted-foreground">
+        사진이나 폴더를 끌어다 놓거나 눌러서 고르세요 · JPG, PNG
+      </span>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         <label
           htmlFor={photoInputId}
@@ -50,6 +68,7 @@ export function UploadDropzone({ onFiles }: { onFiles: (files: File[]) => void }
           <ImageIcon aria-hidden="true" />
           사진 고르기
           <input
+            ref={photoInputRef}
             id={photoInputId}
             type="file"
             multiple

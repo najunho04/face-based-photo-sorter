@@ -50,6 +50,7 @@ export default function EventCreatePage() {
     <>
       <AdministratorPageHeader
         title="새 행사 만들기"
+        spacingBelow={24}
         breadcrumbs={[{ label: '최근 행사', to: paths.administratorEvents }, { label: '새 행사' }]}
         backTo={paths.administratorEvents}
       />

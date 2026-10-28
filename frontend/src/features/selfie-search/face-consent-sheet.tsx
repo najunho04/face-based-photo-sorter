@@ -19,7 +19,8 @@ export function FaceConsentSheet({ isOpen, onOpenChange, onAgree }: FaceConsentS
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader>
+        {/* 시안 ②-1: 손잡이↔제목 20px, 제목↔안내 목록 20px */}
+        <DrawerHeader className="pt-5 pb-5">
           <DrawerTitle>셀카로 찾기 전에 확인해주세요</DrawerTitle>
           <DrawerDescription className="sr-only">
             셀카 사용 목적과 촬영 방법을 확인하고 얼굴 정보 처리에 동의해주세요.

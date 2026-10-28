@@ -12,7 +12,7 @@ export function SelfieSearchingView({ selfie, onCancel }: SelfieSearchingViewPro
   const selfieUrl = useObjectUrl(selfie)
 
   return (
-    <div className="flex flex-1 flex-col items-center px-6 pb-[calc(env(safe-area-inset-bottom)+24px)]">
+    <div className="flex flex-1 flex-col items-center px-6 pb-[calc(env(safe-area-inset-bottom)+32px)]">
       <div
         role="status"
         className="flex flex-1 flex-col items-center justify-center gap-7 text-center"
