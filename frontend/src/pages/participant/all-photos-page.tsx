@@ -42,11 +42,11 @@ export default function AllPhotosPage() {
       </div>
       <Link
         to={paths.eventHome(session.accessCode)}
-        className="hidden min-h-11 items-center self-start pt-5 text-small font-semibold text-muted-foreground lg:flex"
+        className="touch-target hidden items-center self-start text-small font-semibold text-muted-foreground lg:mt-7 lg:flex"
       >
         ← 사람별 사진
       </Link>
-      <div className="flex flex-col gap-0.5 px-5 pb-4 lg:px-0 lg:pt-2 lg:pb-5">
+      <div className="flex flex-col gap-0.5 px-5 pb-4 lg:px-0 lg:pt-5 lg:pb-5">
         <h1 className="text-[22px] leading-8 font-bold lg:text-display">전체 사진</h1>
         <p className="text-[13px] leading-5 text-muted-foreground lg:text-small">
           {session.eventName}

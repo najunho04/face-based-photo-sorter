@@ -38,6 +38,7 @@ export default function EventsPage() {
     <>
       <AdministratorPageHeader
         title="최근 행사"
+        spacingBelow={28}
         description="이 브라우저에서 만든 행사예요. 다른 기기에서 만든 행사는 보이지 않아요."
         actions={
           <Button asChild>
@@ -61,7 +62,8 @@ export default function EventsPage() {
             }
           />
         ) : (
-          <ul className="grid gap-3 lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] lg:gap-4">
+          <ul className="grid gap-3 pb-24 lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] lg:gap-4 lg:pb-0">
+            {/* 같은 줄 카드는 높이를 맞추고(카드 h-full), 휴대폰은 마지막 카드가 떠 있는 [새 행사] 버튼에 가리지 않게 아래를 띄운다 */}
             {recentEventIds.map((eventId, index) => {
               const progressQuery = progressQueries[index]
               return (
@@ -91,10 +93,10 @@ export default function EventsPage() {
         )}
       </AdministratorPageBody>
 
-      {/* M1 휴대폰: 오른쪽 아래 둥근 [새 행사] 버튼 */}
+      {/* M1 휴대폰: 오른쪽 아래 둥근 [새 행사] 버튼(시안: 아래 36px, 그림자 md) */}
       <Button
         asChild
-        className="fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+28px)] h-14 rounded-full px-5.5 shadow-lg lg:hidden"
+        className="fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+36px)] h-14 rounded-full px-5.5 shadow-md lg:hidden"
       >
         <Link to={paths.administratorEventCreate}>
           <PlusIcon />새 행사
@@ -116,7 +118,7 @@ function EventCard({ progress }: { progress: EventProgress }) {
   return (
     <Link
       to={destination}
-      className="flex flex-col gap-2.5 rounded-lg border border-border bg-background p-4.5 transition-colors outline-none hover:border-primary-border focus-visible:ring-2 focus-visible:ring-ring lg:gap-3.5 lg:p-5"
+      className="flex h-full flex-col gap-2.5 rounded-lg border border-border bg-background p-4.5 transition-colors outline-none hover:border-primary-border focus-visible:ring-2 focus-visible:ring-ring lg:gap-3.5 lg:p-5"
     >
       <EventStatusBadge status={progress.status} />
       <span className="text-[17px] leading-6 font-bold lg:text-lg">{progress.name}</span>
@@ -150,7 +152,7 @@ function EventCardSummary({ progress }: { progress: EventProgress }) {
 // 행사가 없어졌을 때(EVENT_NOT_FOUND): 목록에서 지울 수 있게 한다
 function MissingEventCard({ onForget }: { onForget: () => void }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5">
+    <div className="flex h-full flex-col gap-2 rounded-lg border border-border bg-background p-5">
       <span className="text-small font-semibold">행사를 찾을 수 없어요</span>
       <span className="text-[13px] text-muted-foreground">삭제되었거나 다른 서버의 행사예요.</span>
       <Button variant="secondary" size="sm" className="self-start" onClick={onForget}>

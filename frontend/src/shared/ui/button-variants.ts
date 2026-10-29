@@ -2,8 +2,9 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 // 디자인 명세서 8.2 버튼 변형
 // - default: 주 버튼(화면당 하나), secondary: 연한 인디고, ghost, destructive, link
-// - 크기: lg 56(참가자 주요 버튼), default 44(관리자·PC), sm 36(표·목록 안), icon 44
-// - sm은 보이는 높이는 36~40px이지만, 위아래로 보이지 않는 여백(::after)을 붙여 눌리는 영역을 44px 이상으로 한다
+// - 크기: lg 56(참가자 주요 버튼), default 44(관리자·PC), md 40(머리글·상자 안 보조 버튼), sm 36(표·목록 안), icon 44
+// - md·sm은 보이는 높이는 40·36px이지만, 위아래로 보이지 않는 여백(::after)을 붙여 눌리는 영역을 44px로 한다
+// - 모서리는 시안대로 40px 이상은 12px, 36px은 8px
 // - 비활성은 흐리게(opacity) 하지 않고 회색 배경 + 진한 회색 글자로 대비를 지킨다
 export const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap transition-[background-color,color,transform] duration-150 ease-out outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
@@ -23,6 +24,7 @@ export const buttonVariants = cva(
       size: {
         lg: 'h-14 px-6 text-body',
         default: 'h-11 px-5 text-[15px]',
+        md: "relative h-10 px-3.5 text-small after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-[''] [&_svg:not([class*='size-'])]:size-4",
         sm: "relative h-9 rounded-sm px-3.5 text-small after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] [&_svg:not([class*='size-'])]:size-4",
         icon: 'size-11',
       },

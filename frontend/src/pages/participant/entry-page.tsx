@@ -50,7 +50,7 @@ export default function EntryPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+40px)] pb-[calc(env(safe-area-inset-bottom)+24px)] lg:flex-row lg:flex-wrap lg:items-center lg:gap-16 lg:py-18">
+    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+16px)] pb-[calc(env(safe-area-inset-bottom)+32px)] lg:flex-row lg:flex-wrap lg:items-center lg:gap-16 lg:py-18">
       {/* PC에서는 위쪽 머리글에 로고가 있으므로 휴대폰에서만 보여 준다 */}
       <AppLogo size="medium" className="lg:hidden" />
 
@@ -73,13 +73,14 @@ export default function EntryPage() {
         noValidate
         className="mt-10 flex flex-col lg:mt-0 lg:w-full lg:max-w-[420px] lg:flex-[1_1_360px] lg:rounded-lg lg:border lg:border-border lg:p-9"
       >
-        <div className="mb-6 hidden flex-col gap-2 lg:flex">
+        {/* PC(P1) 입장 카드: 제목·설명·라벨·입력칸 사이를 모두 16px로 */}
+        <div className="mb-6 hidden flex-col gap-4 lg:flex">
           <h2 className="text-title-2">행사 입장</h2>
           <p className="text-small text-muted-foreground">
             주최 측에서 받은 인증코드를 입력하세요.
           </p>
         </div>
-        <Label htmlFor={accessCodeInputId} className="mb-2">
+        <Label htmlFor={accessCodeInputId} className="mb-2 lg:mb-4">
           인증코드
         </Label>
         <Input
@@ -117,18 +118,32 @@ export default function EntryPage() {
           입장하기
         </Button>
 
-        <div className="mt-7 flex items-center gap-3 rounded-md bg-muted p-4 lg:hidden">
-          <QrCodeIcon className="size-7 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="text-small text-muted-foreground">
-            단톡방 QR로 들어오면 코드가 자동으로 입력돼요.
-          </span>
+        {/* PC: 입장 카드 안 [입장하기] 바로 아래 오른쪽에도 관리자 페이지 안내를 둔다(머리글 오른쪽 링크와 같은 곳으로 감) */}
+        <div className="mt-5 hidden items-center justify-end gap-1.5 text-small lg:flex">
+          <span className="text-muted-foreground">행사를 주최한 관리자인가요?</span>
+          <Link
+            to={paths.administratorLogin()}
+            className="touch-target flex items-center font-semibold text-primary"
+          >
+            관리자 페이지
+          </Link>
         </div>
+
+        {/* QR 안내는 처음 화면에서만. 코드가 틀렸을 때는 오류 문구에 집중하도록 숨긴다(시안 ①-2) */}
+        {!errorMessage && (
+          <div className="mt-7 flex items-center gap-3 rounded-md bg-muted p-4 lg:hidden">
+            <QrCodeIcon className="size-7 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="text-small text-muted-foreground">
+              단톡방 QR로 들어오면 코드가 자동으로 입력돼요.
+            </span>
+          </div>
+        )}
       </form>
 
       {/* 휴대폰: 관리자 페이지 링크를 화면 맨 아래에 둔다(PC는 머리글 오른쪽에 있음) */}
       <div className="flex-1 lg:hidden" />
       <div className="mt-8 flex items-center justify-center gap-1.5 border-t border-border pt-4 text-small lg:hidden">
-        <span className="text-muted-foreground">행사를 만드는 학생회인가요?</span>
+        <span className="text-muted-foreground">행사를 주최한 관리자인가요?</span>
         <Link
           to={paths.administratorLogin()}
           className="flex min-h-11 items-center font-semibold text-primary"

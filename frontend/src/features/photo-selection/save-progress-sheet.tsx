@@ -31,7 +31,8 @@ export function SaveProgressSheet({
       }}
     >
       <DrawerContent>
-        <div className="flex flex-col gap-4 px-6 pt-2 pb-8">
+        {/* 시안 ⑤-2: 손잡이↔제목 16px */}
+        <div className="flex flex-col gap-4 px-6 pt-4 pb-8">
           <SaveProgressContent
             progress={progress}
             onOpenShareSheet={onOpenShareSheet}

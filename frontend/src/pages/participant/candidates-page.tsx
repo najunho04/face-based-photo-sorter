@@ -97,7 +97,7 @@ function CandidateSelection({
         : `이게 나예요 · ${selectedCount}명 선택`
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+24px)] lg:mx-auto lg:w-full lg:max-w-[760px] lg:items-center lg:py-16 lg:text-center">
+    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+32px)] lg:mx-auto lg:w-full lg:max-w-[760px] lg:items-center lg:py-16 lg:text-center">
       <BackToCameraButton accessCode={accessCode} />
       <div className="mt-6 flex flex-col gap-2 lg:mt-0 lg:gap-3">
         <h1 className="text-title-1 lg:text-[32px] lg:leading-10">이 중에 본인이 있나요?</h1>
@@ -107,7 +107,7 @@ function CandidateSelection({
         </p>
       </div>
       {/* 휴대폰: 세 칸을 한 줄에(칸 폭은 화면에 맞춰 최대 106px) / PC: 200px 카드 */}
-      <ul className="mt-12 flex justify-center gap-3 lg:mt-9 lg:flex-wrap lg:gap-5">
+      <ul className="mt-12 flex justify-center gap-3 lg:flex-wrap lg:gap-5">
         {candidates.map((candidate, index) => (
           <li
             key={candidate.personId}
@@ -128,15 +128,18 @@ function CandidateSelection({
           본인 얼굴을 하나 이상 골라주세요.
         </p>
       )}
-      <div className="flex flex-col gap-3 lg:mt-9 lg:flex-row-reverse lg:justify-center">
+      {/* PC(P4): 카드와 버튼 사이 48px, 나란한 두 버튼은 같은 52px 높이 */}
+      <div className="flex flex-col gap-3 lg:mt-12 lg:flex-row-reverse lg:justify-center">
         <Button
           size="lg"
           onClick={confirmSelection}
           aria-disabled={selectedCount === 0}
-          // 아무도 고르지 않았을 때는 회색으로 보여 주되, 누르면 이유를 알려 준다(명세서 8.2)
+          // 아무도 고르지 않았을 때는 회색으로 보여 주되, 누르면 이유를 알려 준다(명세서 8.2).
+          // 누르는 순간에도 남색으로 바뀌지 않게 active 색까지 회색으로 덮는다
           className={cn(
-            'lg:px-9',
-            selectedCount === 0 && 'bg-border text-muted-foreground hover:bg-border',
+            'lg:h-13 lg:px-9 lg:text-[15px]',
+            selectedCount === 0 &&
+              'bg-border text-muted-foreground hover:bg-border active:bg-border',
           )}
         >
           {confirmLabel}
@@ -168,7 +171,7 @@ function SearchFailureView({
   description: string
 }) {
   return (
-    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+24px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:py-16">
+    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+32px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:py-16">
       <BackToCameraButton accessCode={accessCode} />
       <div className="flex flex-1 flex-col justify-center gap-6 py-10">
         <div className="flex size-18 items-center justify-center rounded-full bg-muted">

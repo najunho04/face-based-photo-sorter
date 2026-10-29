@@ -52,7 +52,7 @@ export default function QrJoinPage() {
   }, [isInvalidCode, accessCode, joinQuery.error, navigate])
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+40px)] pb-[calc(env(safe-area-inset-bottom)+24px)] lg:py-20">
+    <div className="flex flex-1 flex-col px-6 pt-[calc(env(safe-area-inset-top)+16px)] pb-[calc(env(safe-area-inset-bottom)+32px)] lg:py-20">
       <AppLogo size="medium" className="lg:hidden" />
       {joinQuery.isError && !isInvalidCode ? (
         // 네트워크 등 코드 외의 이유로 실패: 다시 시도하거나 코드를 직접 입력하게 한다

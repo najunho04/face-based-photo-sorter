@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
 import { desktopMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
+import { cn } from '@/shared/lib/utils'
 import { AppLogo } from '@/shared/ui/app-logo'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -66,7 +67,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col pb-[calc(env(safe-area-inset-bottom)+32px)] lg:pb-12">
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
         <AppLogo size="medium" />
       </div>
 
@@ -103,11 +104,17 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 lg:hidden">
+      {/* 시안: 셀카 버튼 아래 24px(②), 내 사진 바로가기 아래 8px(②-2). 링크는 줄 높이를 키우지 않고 눌리는 영역만 44px */}
+      <div
+        className={cn(
+          'flex items-center justify-between px-5 pb-3 lg:hidden',
+          hasMyPersons ? 'pt-2' : 'pt-6',
+        )}
+      >
         <h2 className="text-headline">사람별 사진</h2>
         <Link
           to={paths.eventAllPhotos(session.accessCode)}
-          className="flex min-h-11 items-center text-small font-semibold text-primary"
+          className="touch-target flex items-center text-small font-semibold text-primary"
         >
           전체 사진 보기
         </Link>

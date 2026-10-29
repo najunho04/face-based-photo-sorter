@@ -25,6 +25,7 @@ function ParticipantDesktopHeader() {
   const currentEventSession = code && session?.accessCode === code ? session : null
 
   return (
+    // 오른쪽 링크는 머리글 높이를 키우지 않고 눌리는 영역만 44px(시안 P1~P5 머리글 위아래 18px)
     <header className="hidden border-b border-border lg:block">
       <div className="mx-auto flex max-w-content items-center justify-between gap-3 px-6 py-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -49,7 +50,7 @@ function ParticipantDesktopHeader() {
           currentEventSession.isEventOpen && (
             <Link
               to={paths.eventAllPhotos(currentEventSession.accessCode)}
-              className="flex min-h-11 items-center text-small font-semibold text-primary"
+              className="touch-target flex items-center text-small font-semibold text-primary"
             >
               전체 사진 보기
             </Link>
@@ -57,7 +58,7 @@ function ParticipantDesktopHeader() {
         ) : (
           <Link
             to={paths.administratorLogin()}
-            className="flex min-h-11 items-center text-small font-semibold text-muted-foreground"
+            className="touch-target flex items-center text-small font-semibold text-muted-foreground"
           >
             관리자 페이지
           </Link>

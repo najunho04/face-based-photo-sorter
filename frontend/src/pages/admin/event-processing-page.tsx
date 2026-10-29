@@ -103,23 +103,13 @@ export default function EventProcessingPage() {
           { label: currentProgress.name },
         ]}
         actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
+          <Button variant="secondary" size="md" onClick={() => setIsShareDialogOpen(true)}>
             <QrCodeIcon />
             인증코드·QR 보기
           </Button>
         }
         mobileAction={
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
+          <Button variant="secondary" size="md" onClick={() => setIsShareDialogOpen(true)}>
             QR 보기
           </Button>
         }
@@ -146,7 +136,7 @@ export default function EventProcessingPage() {
               </div>
             </div>
             {notification.permission === 'default' && (
-              <Button variant="secondary" size="sm" className="h-10" onClick={notification.request}>
+              <Button variant="secondary" size="md" onClick={notification.request}>
                 알림 받기
               </Button>
             )}

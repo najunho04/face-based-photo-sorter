@@ -74,11 +74,12 @@ function DialogContent({
   )
 }
 
+// 시안 A3: 창 제목과 설명 사이 16px
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex flex-col gap-2 text-left', className)}
+      className={cn('flex flex-col gap-4 text-left', className)}
       {...props}
     />
   )

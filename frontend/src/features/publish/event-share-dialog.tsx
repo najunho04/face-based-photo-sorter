@@ -75,15 +75,10 @@ export function EventShareDialog({
           )}
           <span className="text-[13px] break-all text-muted-foreground">{joinUrl}</span>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-10"
-              onClick={() => void copyJoinUrl()}
-            >
+            <Button variant="secondary" size="md" onClick={() => void copyJoinUrl()}>
               링크 복사
             </Button>
-            <Button variant="secondary" size="sm" className="h-10" onClick={saveQrImage}>
+            <Button variant="secondary" size="md" onClick={saveQrImage}>
               QR 이미지 저장
             </Button>
           </div>

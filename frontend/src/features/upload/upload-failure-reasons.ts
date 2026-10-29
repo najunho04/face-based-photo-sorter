@@ -17,3 +17,14 @@ export function getUploadFailureLabel(reason: string | null): string {
 export function isRetryableUploadFailure(reason: string | null): boolean {
   return reason === 'NETWORK_ERROR' || reason === 'TIMEOUT' || reason === 'INTERNAL_ERROR'
 }
+
+// 휴대폰 실패 상자(시안 M2)용 요약: 같은 이유끼리 세어 "네트워크 오류 1 · 지원하지 않는 형식 1"로 만든다.
+// 화면이 좁아 파일 이름 목록 대신 이유별 장 수만 보여 준다(처음 나온 이유부터)
+export function summarizeUploadFailureReasons(reasons: (string | null)[]): string {
+  const countByLabel = new Map<string, number>()
+  for (const reason of reasons) {
+    const label = getUploadFailureLabel(reason)
+    countByLabel.set(label, (countByLabel.get(label) ?? 0) + 1)
+  }
+  return [...countByLabel].map(([label, count]) => `${label} ${count}`).join(' · ')
+}

@@ -58,11 +58,12 @@ function AlertDialogContent({
   )
 }
 
+// 시안 A4-1: 확인 창 제목과 설명 사이 16px
 function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="alert-dialog-header"
-      className={cn('flex flex-col gap-2 text-left', className)}
+      className={cn('flex flex-col gap-4 text-left', className)}
       {...props}
     />
   )

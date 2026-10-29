@@ -118,7 +118,7 @@ export default function CameraPage() {
   // ③-1 찾는 중 / 실패: 휴대폰·PC 같은 화면(흰 바탕)
   if (searchState.phase === 'searching') {
     return (
-      <div className="flex flex-1 flex-col pt-[calc(env(safe-area-inset-top)+40px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:pt-16">
+      <div className="flex flex-1 flex-col pt-[calc(env(safe-area-inset-top)+16px)] lg:mx-auto lg:w-full lg:max-w-[480px] lg:pt-16">
         <AppLogo size="medium" className="px-6 lg:hidden" />
         <SelfieSearchingView selfie={searchState.selfie} onCancel={cancelSearch} />
       </div>
@@ -180,7 +180,7 @@ export default function CameraPage() {
         <section className="flex min-w-0 flex-[999_1_520px] flex-col gap-4">
           <Link
             to={paths.eventHome(session.accessCode)}
-            className="flex min-h-11 items-center self-start text-small font-semibold text-muted-foreground"
+            className="touch-target flex items-center self-start text-small font-semibold text-muted-foreground"
           >
             ← 사람별 사진
           </Link>
@@ -230,7 +230,7 @@ export default function CameraPage() {
 
   // 휴대폰(③): 어두운 전체 화면. 동의 전이면(주소로 바로 들어온 경우) 동의 시트를 먼저 띄운다
   return (
-    <div className="flex flex-1 flex-col bg-dark-bg pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+24px)] text-dark-foreground">
+    <div className="flex flex-1 flex-col bg-dark-bg pt-[calc(env(safe-area-inset-top)+8px)] pb-[calc(env(safe-area-inset-bottom)+40px)] text-dark-foreground">
       <div className="flex items-center justify-between px-3">
         <Button
           asChild

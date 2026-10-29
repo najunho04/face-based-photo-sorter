@@ -78,23 +78,13 @@ export default function EventResultPage() {
         badge={<EventStatusBadge status={progress.status} />}
         description={`사람 ${progress.personCount ?? 0}명 · 참가자가 지금 볼 수 있어요`}
         actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
+          <Button variant="secondary" size="md" onClick={() => setIsShareDialogOpen(true)}>
             <QrCodeIcon />
             인증코드·QR 보기
           </Button>
         }
         mobileAction={
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
+          <Button variant="secondary" size="md" onClick={() => setIsShareDialogOpen(true)}>
             QR 보기
           </Button>
         }
@@ -106,10 +96,11 @@ export default function EventResultPage() {
             사람 {progress.personCount ?? 0}명 · 사진 많은 순
           </span>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-4 py-0.5">
+        {/* 막대 높이는 시안대로(위아래 12px) 두고, 라벨이 눌리는 영역만 44px로 넓힌다 */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3.5 py-3 lg:px-4">
           <label
             htmlFor={toggleId}
-            className="flex min-h-11 cursor-pointer items-center gap-2.5 text-small font-medium"
+            className="touch-target flex cursor-pointer items-center gap-2.5 text-small font-medium"
           >
             <Checkbox
               id={toggleId}

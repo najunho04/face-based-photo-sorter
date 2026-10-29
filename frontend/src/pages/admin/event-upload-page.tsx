@@ -11,6 +11,7 @@ import { EventShareDialog } from '@/features/publish/event-share-dialog'
 import {
   getUploadFailureLabel,
   isRetryableUploadFailure,
+  summarizeUploadFailureReasons,
 } from '@/features/upload/upload-failure-reasons'
 import { UploadDropzone } from '@/features/upload/upload-dropzone'
 import { useUploadQueue } from '@/features/upload/use-upload-queue'
@@ -20,6 +21,7 @@ import {
 } from '@/pages/admin/administrator-page-header'
 import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
+import { observeToastClearance } from '@/shared/lib/toast-clearance'
 import { cn } from '@/shared/lib/utils'
 import {
   AlertDialog,
@@ -97,6 +99,8 @@ export default function EventUploadPage() {
   const hasRetryableFailure = failedItems.some((item) =>
     isRetryableUploadFailure(item.failureReason),
   )
+  // 이번에 고른 사진을 다 보냈는지(실패한 사진은 끝난 것으로 본다)
+  const hasFinishedUploading = !isUploading && snapshot.totalCount > 0
 
   function addFiles(files: File[]) {
     const addedCount = upload.addFiles(files)
@@ -134,12 +138,7 @@ export default function EventUploadPage() {
   }
 
   const shareButton = (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="h-10"
-      onClick={() => setIsShareDialogOpen(true)}
-    >
+    <Button variant="secondary" size="md" onClick={() => setIsShareDialogOpen(true)}>
       <QrCodeIcon />
       인증코드·QR 보기
     </Button>
@@ -170,32 +169,28 @@ export default function EventUploadPage() {
           { label: progress.name },
         ]}
         actions={shareButton}
-        mobileAction={
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-10"
-            onClick={() => setIsShareDialogOpen(true)}
-          >
-            QR 보기
-          </Button>
-        }
       />
       <AdministratorPageBody>
         <div className="hidden lg:block">
           <EventProgressSteps status="uploading" />
         </div>
         <div className="hidden lg:block">
-          <UploadDropzone onFiles={addFiles} />
+          <UploadDropzone
+            onFiles={addFiles}
+            hasPhotos={serverPhotoCount + snapshot.totalCount > 0}
+          />
         </div>
 
+        {/* 진행 상자(시안 A4·A4-1·M2): 올리는 중엔 "64 / 100장", 다 올리면 "업로드 끝 · 98장 올림 · 실패 2장" */}
         <section className="flex flex-col gap-2.5 rounded-lg border border-border bg-background p-5 lg:p-6">
           <div className="flex justify-between text-small">
-            <span className="font-semibold">업로드</span>
+            <span className="font-semibold">{hasFinishedUploading ? '업로드 끝' : '업로드'}</span>
             <span role="status" className="font-semibold text-success">
-              {snapshot.totalCount > 0
-                ? `${snapshot.doneCount} / ${snapshot.totalCount}장`
-                : `이 행사에 올린 사진 ${serverPhotoCount}장`}
+              {snapshot.totalCount === 0
+                ? `이 행사에 올린 사진 ${serverPhotoCount}장`
+                : hasFinishedUploading
+                  ? `${snapshot.doneCount}장 올림${failedItems.length > 0 ? ` · 실패 ${failedItems.length}장` : ''}`
+                  : `${snapshot.doneCount} / ${snapshot.totalCount}장`}
             </span>
           </div>
           <Progress
@@ -212,15 +207,42 @@ export default function EventUploadPage() {
             {isUploading
               ? '사진 크기를 줄여서 올리고 있어요. 업로드 중에는 이 창을 닫지 마세요.'
               : snapshot.totalCount > 0
-                ? `업로드가 끝났어요. 이 행사에 올린 사진은 모두 ${serverPhotoCount}장이에요.`
+                ? failedItems.length > 0
+                  ? '업로드가 끝났어요. 실패한 사진은 다시 시도하거나 빼고 진행할 수 있어요.'
+                  : `업로드가 끝났어요. 이 행사에 올린 사진은 모두 ${serverPhotoCount}장이에요.`
                 : serverPhotoCount > 0
                   ? '사진을 더 올리거나 업로드를 완료하세요.'
                   : '행사 사진을 골라 올려주세요.'}
           </p>
         </section>
 
+        {/* 휴대폰(M2) 실패 상자: 좁은 화면이라 파일 목록 대신 이유별 장 수 한 줄 + [다시 시도] */}
         {failedItems.length > 0 && (
-          <section className="flex flex-col gap-3 rounded-lg border border-danger-border bg-background p-5 lg:px-6">
+          <section className="flex items-center justify-between gap-3 rounded-lg border border-danger-border bg-background px-5 py-4 lg:hidden">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-small font-semibold text-danger">
+                {failedItems.length}장 업로드 실패
+              </span>
+              <span className="text-caption text-muted-foreground">
+                {summarizeUploadFailureReasons(failedItems.map((item) => item.failureReason))}
+              </span>
+            </div>
+            {hasRetryableFailure && (
+              <Button
+                variant="secondary"
+                size="md"
+                className="text-[13px]"
+                onClick={upload.retryFailed}
+              >
+                다시 시도
+              </Button>
+            )}
+          </section>
+        )}
+
+        {/* PC(A4) 실패 상자: 파일별 이유와 제외 여부 */}
+        {failedItems.length > 0 && (
+          <section className="hidden flex-col gap-3 rounded-lg border border-danger-border bg-background px-6 py-5 lg:flex">
             <div className="flex items-center justify-between gap-3">
               <span className="text-small font-semibold text-danger">
                 업로드하지 못한 사진 {failedItems.length}장
@@ -273,11 +295,14 @@ export default function EventUploadPage() {
           {completeButton}
         </section>
         {/* 휴대폰 아래 고정 막대 자리만큼 띄운다 */}
-        <div className="h-44 lg:hidden" />
+        <div className="h-48 lg:hidden" />
       </AdministratorPageBody>
 
-      {/* 휴대폰(M2) 아래 고정 막대: 갤러리에서 더 고르기 + 업로드 완료 */}
-      <div className="fixed inset-x-0 bottom-0 flex flex-col gap-2.5 border-t border-border bg-background px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+20px)] lg:hidden">
+      {/* 휴대폰(M2) 아래 고정 막대: 갤러리에서 더 고르기 + 업로드 완료. 토스트는 이 막대 위에 뜬다 */}
+      <div
+        ref={observeToastClearance}
+        className="fixed inset-x-0 bottom-0 flex flex-col gap-2.5 border-t border-border bg-background px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+32px)] lg:hidden"
+      >
         <label
           htmlFor={galleryInputId}
           className={cn(buttonVariants({ variant: 'secondary' }), 'h-12 cursor-pointer')}

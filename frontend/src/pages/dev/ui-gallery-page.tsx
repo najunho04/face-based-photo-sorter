@@ -304,14 +304,14 @@ export default function UiGalleryPage() {
             <EmptyState
               icon={ImageOffIcon}
               title="아직 찾은 사진이 없어요"
-              description="셀카로 한 번 찾아 보세요."
+              description="셀카로 한 번 찾아보세요."
               action={<Button variant="secondary">셀카로 찾기</Button>}
             />
           </Card>
           <Card>
             <ErrorState
               title="사진을 불러오지 못했어요"
-              description="인터넷 연결을 확인하고 다시 시도해 주세요."
+              description="인터넷 연결을 확인하고 다시 시도해주세요."
               onRetry={() => toast('다시 시도를 눌렀어요')}
             />
           </Card>
@@ -342,7 +342,7 @@ export default function UiGalleryPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>입장 QR</DialogTitle>
-                <DialogDescription>참가자에게 이 화면을 보여 주세요.</DialogDescription>
+                <DialogDescription>참가자에게 이 화면을 보여주세요.</DialogDescription>
               </DialogHeader>
               <PhotoPlaceholder className="rounded-md" />
               <DialogFooter>
@@ -379,7 +379,7 @@ export default function UiGalleryPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => toast.error('저장하지 못했어요. 다시 시도해 주세요.')}
+            onClick={() => toast.error('저장하지 못했어요. 다시 시도해주세요.')}
           >
             오류 알림
           </Button>

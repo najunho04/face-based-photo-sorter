@@ -25,6 +25,7 @@ import { getErrorMessage } from '@/shared/api/error-messages'
 import { paths } from '@/shared/config/paths'
 import { desktopMediaQuery, useMediaQuery } from '@/shared/lib/use-media-query'
 import { useRefetchOnImageError } from '@/shared/lib/use-refetch-on-image-error'
+import { observeToastClearance } from '@/shared/lib/toast-clearance'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -126,12 +127,20 @@ function MyPhotosContent({ personIds }: { personIds: number[] }) {
     <div
       className={cn(
         'flex flex-col lg:px-6 lg:pb-12',
-        // 휴대폰은 아래 고정 막대만큼 여백을 둔다
-        'pb-[calc(env(safe-area-inset-bottom)+88px)]',
+        // 휴대폰은 아래 고정 막대만큼 여백을 둔다(평소 약 68px, 선택 모드 약 96px)
+        selection.isSelecting
+          ? 'pb-[calc(env(safe-area-inset-bottom)+100px)]'
+          : 'pb-[calc(env(safe-area-inset-bottom)+72px)]',
       )}
     >
       {/* 휴대폰 위쪽: 평소 [뒤로] … [선택] / 선택 모드 [취소] N장 선택됨 [전체 선택] */}
-      <div className="flex items-center justify-between px-2.5 pt-[calc(env(safe-area-inset-top)+8px)] pb-1 lg:hidden">
+      <div
+        className={cn(
+          'flex items-center justify-between px-2.5 pt-[calc(env(safe-area-inset-top)+8px)] lg:hidden',
+          // 시안: 평소 아래 4px, 선택 모드 8px
+          selection.isSelecting ? 'pb-2' : 'pb-1',
+        )}
+      >
         {selection.isSelecting ? (
           <>
             <Button variant="ghost" className="px-2.5 text-[15px]" onClick={selection.exit}>
@@ -169,13 +178,13 @@ function MyPhotosContent({ personIds }: { personIds: number[] }) {
 
       <Link
         to={paths.eventHome(session.accessCode)}
-        className="hidden min-h-11 items-center self-start pt-5 text-small font-semibold text-muted-foreground lg:flex"
+        className="touch-target hidden items-center self-start text-small font-semibold text-muted-foreground lg:mt-7 lg:flex"
       >
         ← 사람별 사진
       </Link>
 
       {!selection.isSelecting && (
-        <div className="flex flex-col gap-3 px-5 pb-4 lg:px-0 lg:pt-2 lg:pb-5">
+        <div className="flex flex-col gap-3 px-5 pb-4 lg:px-0 lg:pt-5 lg:pb-5">
           <div className="flex flex-wrap items-center gap-3 lg:justify-between lg:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-4">
               {faces}
@@ -193,8 +202,7 @@ function MyPhotosContent({ personIds }: { personIds: number[] }) {
             </div>
             <Button
               variant={isDesktop ? 'default' : 'secondary'}
-              size={isDesktop ? 'default' : 'sm'}
-              className="h-10 lg:h-11"
+              size={isDesktop ? 'default' : 'md'}
               onClick={() => saver.start(photos, 'save')}
               disabled={photoCount === 0}
             >
@@ -259,8 +267,15 @@ function MyPhotosContent({ personIds }: { personIds: number[] }) {
         </PhotoGrid>
       )}
 
-      {/* 휴대폰 아래 고정 막대: 평소 '전체 사진 보기' 안내 / 선택 모드 [공유] [저장] */}
-      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-[560px] border-t border-border bg-background px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+20px)] lg:hidden">
+      {/* 휴대폰 아래 고정 막대: 평소 '전체 사진 보기' 안내 / 선택 모드 [공유] [저장]. 토스트는 이 막대 위에 뜬다 */}
+      <div
+        ref={observeToastClearance}
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-10 mx-auto max-w-[560px] border-t border-border bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+32px)] lg:hidden',
+          // 시안: 위 여백 평소 16px, 선택 모드 12px
+          selection.isSelecting ? 'pt-3' : 'pt-4',
+        )}
+      >
         {selection.isSelecting ? (
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -286,7 +301,7 @@ function MyPhotosContent({ personIds }: { personIds: number[] }) {
             <span className="text-small text-muted-foreground">못 찾은 사진이 있나요?</span>
             <Link
               to={paths.eventAllPhotos(session.accessCode)}
-              className="flex min-h-11 items-center text-small font-semibold text-primary"
+              className="touch-target flex items-center text-small font-semibold text-primary"
             >
               전체 사진 보기
             </Link>

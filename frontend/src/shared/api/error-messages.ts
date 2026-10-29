@@ -7,7 +7,7 @@ const errorMessages: Record<ServerErrorCode | ClientErrorCode, string> = {
   UNAUTHORIZED: '접속 시간이 끝났어요. 다시 들어와주세요.',
   LOGIN_FAILED: '아이디 또는 비밀번호가 맞지 않아요. 다시 확인해주세요.',
   FORBIDDEN: '이 행사를 볼 수 없어요. 인증코드로 다시 들어와주세요.',
-  INVALID_ACCESS_CODE: '인증코드를 찾을 수 없어요. 코드를 다시 확인해주세요.',
+  INVALID_ACCESS_CODE: '인증코드를 찾을 수 없어요. 다시 확인해주세요.',
   EVENT_NOT_FOUND: '행사를 찾을 수 없어요. 주소나 인증코드를 다시 확인해주세요.',
   PERSON_NOT_FOUND: '사진 폴더를 찾을 수 없어요. 목록에서 다시 골라주세요.',
   EVENT_NOT_READY: '아직 사진을 정리하고 있어요. 잠시 후 다시 확인해주세요.',
