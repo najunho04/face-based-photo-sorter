@@ -1,41 +1,102 @@
-# face-based-photo-sorter
+# 인생내컷 (face-based-photo-sorter)
 
-행사 사진을 얼굴별로 자동 분류하고, 참가자가 셀카로 본인 사진 폴더를 찾아 내려받는 서비스.
+행사 사진을 얼굴별로 자동 분류하고, 참가자가 셀카 한 장으로 자기 사진만 찾아 내려받는 웹서비스.
 
-## 백엔드 시작하기
+서비스 주소: https://findmyphoto.remotewire.net
+
+## 1. 서비스 개요
+
+행사 사진 수백 장 속에서 내가 나온 사진을 찾으려면 하나하나 넘겨 봐야 해요. 인생내컷은 이 과정을 자동으로 처리해요.
+
+```
+[관리자] 행사 만들기 → 사진 업로드 → 업로드 완료
+                                   ↓
+[서버]   얼굴 찾기 → 사람별로 묶기 → 사진 보관 → 공개
+                                   ↓
+[참가자] 인증코드·QR로 입장 → 셀카 촬영 → 내 사진 폴더 → 저장·공유
+```
+
+| 사용자 | 할 수 있는 것 |
+|---|---|
+| 관리자 | 행사 생성(인증코드·QR 발급), 사진 업로드, 정리 진행 상황 확인, 분류 결과 확인 |
+| 참가자 | 인증코드·QR로 입장, 셀카로 내 사진 폴더 찾기, 사람별·전체 사진 보기, 여러 장 저장·공유 |
+
+- 셀카는 서버에 저장하지 않고, 사진은 만료 시간(1시간)이 있는 주소로만 제공해요.
+- 휴대폰(아이폰 Safari·안드로이드 Chrome)과 PC 화면을 모두 지원해요.
+
+## 2. 기술 스택
+
+| 영역 | 기술 |
+|---|---|
+| 프론트엔드 | React 19, TypeScript, Vite, React Router, Tailwind CSS, shadcn/ui, MSW(가짜 API), Vitest |
+| 백엔드 | Python 3.12, FastAPI, SQLAlchemy 2, uv, pytest |
+| 얼굴 분석 | InsightFace `buffalo_l` (얼굴 검출·512차원 벡터), SciPy (계층적 군집) |
+| DB | PostgreSQL 16 + pgvector (얼굴 벡터 검색, 작업 대기열) |
+| 인프라 (NCP) | Global Edge, Application Load Balancer, Auto Scaling, Cloud DB for PostgreSQL, NAS, Object Storage, Container Registry, Cloud Insight, Certificate Manager |
+| 배포 | Docker (API·워커 이미지), Nginx |
+
+## 3. 역할 분담
+
+| 역할 | 담당 |
+|---|---|
+| 백엔드 1 | 공통 기반(설정·인증·DB 모델), 행사·사진 업로드, 사람 분류, 사진 보관·공개, 사진 조회 API, 배포 이미지 |
+| 백엔드 2 | 얼굴 찾기 워커(검출·벡터 추출), 셀카 매칭 API |
+| 프론트엔드 | 참가자·관리자 화면 전체, 가짜 API, 디자인 시스템 |
+| 인프라 | NCP 아키텍처 설계·구축, 배포, 자동 확장, 부하 테스트 |
+
+## 4. 아키텍처
+
+![아키텍처](docs/images/architecture.webp)
+
+- 사용자는 HTTPS 도메인 하나로 화면과 API를 함께 써요 (Global Edge → Load Balancer → Nginx → API).
+- API 서버와 워커(얼굴 찾기)를 나눠 각각 Auto Scaling으로 늘리고 줄여요.
+- API와 워커는 서로 호출하지 않고 **DB(PostgreSQL)와 공유 NAS로만** 주고받아요.
+- 사진은 비공개 Object Storage에 두고, API가 발급한 서명 URL로만 제공해요.
+
+자세한 구성과 검증 결과는 [docs/deployment.md](docs/deployment.md).
+
+## 5. ERD · API
+
+**ERD** — [docs/erd.md](docs/erd.md)
+
+| 테이블 | 내용 |
+|---|---|
+| `events` | 행사 (이름, 인증코드, 상태 `uploading → extracting → clustering → open`) |
+| `photos` | 사진 (NAS 경로, Object Storage 위치, 처리 상태). 상태 값이 워커의 작업 대기열 역할 |
+| `faces` | 사진 속 얼굴 (위치, 512차원 벡터, 어느 사람인지) |
+| `persons` | 분류된 사람 (이름, 대표 벡터, 대표 얼굴) |
+
+**API** — [docs/api.md](docs/api.md)
+
+| 대상 | API |
+|---|---|
+| 관리자 | 1 로그인 · 2 행사 생성 · 3 사진 업로드 · 4 업로드 완료 · 5 진행 상황 |
+| 참가자 | 6 입장 · 7 전체 사진 · 8 셀카 매칭 · 9 사람 폴더 사진 · 10 사람 폴더 목록 |
+
+## 6. 백엔드 · 프론트 · 배포
+
+**백엔드** — [backend/README.md](backend/README.md)
+
+API 서버(API 1~10 + 분류 스케줄러), 워커(얼굴 찾기), DB 세 개로 돌아가요. 주요 기능, 로컬 실행 방법, 실험 결과가 있어요.
 
 ```bash
 cd backend
 uv sync && cp .env.example .env
 docker compose up -d                          # DB
 uv run uvicorn main:application --reload      # API 서버 + 분류 스케줄러 (http://localhost:8000/docs)
-uv run python -m extraction.worker            # 워커 (얼굴 추출)
+uv run python -m extraction.worker            # 워커
 ```
 
-실행되는 프로그램 구성, Object Storage 키 없이 띄우는 법, 프론트가 알아 둘 응답 규칙은 [backend/README.md](backend/README.md)에 있어요.
+**프론트엔드** — [frontend/README.md](frontend/README.md)
 
-## 백엔드 팀원에게
+백엔드 없이도 가짜 API로 모든 화면을 확인할 수 있어요. 개발 계획과 결정 기록은 [frontend/docs/frontend-dev-plan.md](frontend/docs/frontend-dev-plan.md), 디자인 명세는 [MASTER.md](frontend/docs/design-system/insaengnaecut/MASTER.md).
 
-초기 세팅 올려뒀어요. 위 명령으로 바로 띄울 수 있어요.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- **담당**: `backend/extraction/`(처리 2: 워커 루프, 얼굴 검출·임베딩)과 `backend/matching/`(API 8: 셀카 매칭)을 맡아 주세요. 나머지 도메인(업로드·분류·보관·조회)은 제가 해요.
-- **얼굴 분석 라이브러리**: InsightFace `buffalo_l` (`pyproject.toml`).
-- **스키마**: ERD 그대로 `backend/database/migrations/001_initial_schema.sql`에 넣었어요. 바꿀 게 있으면 `docs/erd.md`부터 같이 정해요.
-- **주고받는 방식**: 서로 코드를 호출하지 않고 DB로만 주고받아요.
-  - 제가 `photos`에 `status='uploaded'`, `nas_path`를 넣으면 → 워커가 잡아서 `faces` INSERT + `extracted`/`failed`
-  - 큐 규칙(작업 잡기, 실패·복구)은 `docs/erd.md`의 "워커 큐 규칙" 참고
-- **DB 접근**: SQLAlchemy ORM으로 통일 (`backend/database/`에 모델 공용으로 둠). 스키마 자체는 migrations SQL이 기준이에요.
-- **규칙**
-  - 변수·함수 이름은 축약 없이 풀네임 (`img` → `image`, `emb` → `embedding`)
-  - 코드마다 무엇을·왜 하는지 주석 1~2줄
-  - TDD: 실패하는 테스트 먼저 → 최소 구현 → 리팩터링
-  - 도메인당 브랜치 `feature/<도메인 폴더명>` (예: `feature/extraction`), main 직접 커밋 금지
-  - 상대 담당 폴더는 수정하지 말고 요청하기
-- **CLAUDE.md**: 저장소에는 올리지 않고 각자 로컬에서 관리해요 (`.gitignore`).
+**배포** — [docs/deployment.md](docs/deployment.md)
 
-## 문서
-
-- [backend/README.md](backend/README.md) — 백엔드 실행 구성·프론트 연동 메모
-- [docs/deployment.md](docs/deployment.md) — 배포 가이드 (인프라 전달용: 이미지, 서버 설정, DB·버킷·프론트 배포)
-- [docs/api.md](docs/api.md) — API 명세·에러코드
-- [docs/erd.md](docs/erd.md) — DB 스키마·워커 큐 규칙·분류 규칙
+NCP 구성 요소, Docker 이미지 빌드·실행, 설정값, 자동 확장 정책, 기능·부하 테스트 결과.
