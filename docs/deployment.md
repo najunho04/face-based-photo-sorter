@@ -1,88 +1,68 @@
-# 배포 가이드 (인프라 전달용)
+# 배포
 
-> 2026-10-27 작성. 인프라 아키텍처 그림(VPC, Load Balancer, API 서버·워커 서버 Auto scaling, Cloud DB, NAS, Object Storage) 기준.
-> 백엔드 실행 구성은 [backend/README.md](../backend/README.md), API는 [api.md](api.md), DB는 [erd.md](erd.md)가 기준이에요.
+> NCP(네이버 클라우드 플랫폼)에 배포한 구성과 배포 방법, 검증 결과.
+> 백엔드 실행 구성은 [backend/README.md](../backend/README.md), API는 [api.md](api.md), DB는 [erd.md](erd.md)를 기준으로 해요.
 
-배포 단위는 3개예요.
+서비스 주소: `https://findmyphoto.remotewire.net`
 
-| 단위 | 형태 | 올리는 곳 |
+![아키텍처](images/architecture.webp)
+
+## 1. 요청이 지나가는 길
+
+| 요청 | 경로 | 비고 |
 |---|---|---|
-| 프론트 | 정적 파일 (`frontend/dist/`) | Object Storage 화면 버킷 (+ Global Edge) |
-| API 서버 | Docker 이미지 `photo-sorter-api` | Container Registry → API 서버 Auto scaling |
-| 워커 | Docker 이미지 `photo-sorter-worker` | Container Registry → 워커 서버 Auto scaling |
+| 화면 HTML (첫 화면·관리자·행사 페이지) | 사용자 → Global Edge → ALB → Nginx | SPA 경로(`/e/*`, `/admin/*`)도 Nginx가 처리 |
+| 정적 JS·CSS (`/assets/*`) | 사용자 → Global Edge → 프론트 Object Storage | CDN 캐시 |
+| API (`/api/*`) | 사용자 → Global Edge → ALB → Nginx → API 컨테이너 | 캐시 우회 |
+| 사진 업로드 | 사용자 → API → 공유 NAS | 워커가 NAS에서 읽어 얼굴 추출 |
+| 공개된 사진 조회·저장 | API가 발급한 서명 URL → 사진 Object Storage | 버킷은 비공개, 제한 시간 동안만 GET 허용 |
 
-API 서버와 워커는 서로 호출하지 않고 **DB(`photos.status`)와 NAS로만** 주고받아요. 둘 다 같은 DB, 같은 NAS를 봐야 해요.
+화면과 API가 같은 HTTPS 도메인이라 백엔드 CORS 설정이 필요 없어요.
 
----
+| 구간 | 프로토콜·포트 |
+|---|---|
+| 사용자 → Global Edge → ALB | HTTPS 443 |
+| ALB → API 서버 Nginx | HTTP 80 |
+| Nginx → API 컨테이너 | HTTP 8000 (`127.0.0.1:8000`) |
+| API·워커 → PostgreSQL | TCP 5432 |
+| API·워커 → NAS | NFS (컨테이너 안 경로 `/nas`) |
+| 관리자 → Bastion → 내부 서버 | SSH 22 |
+| Private 서버 → 외부 | NAT Gateway |
 
-## 1. 먼저 확인 부탁드려요 (아키텍처 그림과 다른 점)
+## 2. 구성 요소
 
-| # | 그림 | 실제로 필요한 것 | 왜 |
-|---|---|---|---|
-| 1 | Cloud DB **TCP 3306**(MySQL) | **Cloud DB for PostgreSQL, 5432** + **pgvector 확장** | 셀카 매칭 벡터 검색(`<=>`), 워커 작업 잡기(`FOR UPDATE SKIP LOCKED`), 분류 잠금(advisory lock)이 모두 PostgreSQL 기능. **pgvector(`CREATE EXTENSION vector`)를 쓸 수 있는지 가장 먼저 확인** — 안 되면 DB 구성이 바뀌어야 해요 |
-| 2 | NAS(NFS)가 **워커 서버에만** 연결 | **API 서버도 같은 NAS를 같은 경로로** 마운트 | 사진 업로드(API 3)는 API 서버가 NAS에 저장, 보관(NAS → Object Storage)도 API 서버 안의 스케줄러가 NAS에서 읽음 |
-| 3 | NAT·Object Storage 연결이 **워커 쪽에만** | **API 서버도 Object Storage에 접근** (NAT 또는 내부 경로) | 보관 단계에서 API 서버가 사진을 Object Storage에 올림. (얼굴 모델은 이미지에 넣어서 모델 다운로드용 외부 연결은 필요 없어요) |
-| 4 | 사용자 ↔ Load Balancer **HTTP 80** | 아래 2절 참고 | HTTP면 일부 휴대폰 기능이 꺼짐 |
-
-같이 확인해 주세요.
-
-- **요청 크기·대기 시간**(Load Balancer 또는 Global Edge): 요청 크기 **10MB 이상**(업로드는 보통 한 번에 3MB 안팎, 사진 1장 최대 20MB), 대기 시간 **60초 이상**(업로드·셀카 매칭).
-- **Load Balancer 상태 확인**: `GET /health` → 200 (DB는 보지 않아요. DB가 잠깐 끊겨도 서버가 한꺼번에 빠지지 않게).
-- **DB 스키마 적용**: 4절.
-- **사진 버킷 CORS**: 5절.
-
----
-
-## 2. 접속 구성 (HTTP 기준 추천)
-
-```
-사용자 ──HTTP──▶ Global Edge (<이름>.edge.naverncp.com, 주소 1개)
-                   ├─ /api/*  → Load Balancer → API 서버   (룰 기반 원본 라우팅)
-                   └─ 나머지   → 화면 버킷 (URL Rewrite: /e/*, /admin/*, /expired → /index.html)
-```
-
-- 화면과 API 주소가 같아서 **백엔드 CORS가 필요 없고**, 프론트 빌드 때 `VITE_API_BASE_URL`을 비워 두면 돼요.
-- **URL Rewrite는 꼭 필요해요.** 없으면 QR(`/e/코드`)로 바로 들어오거나 새로고침할 때 404가 나요. Object Storage만으로는 해결되지 않아요.
-- Global Edge를 거치는 업로드(POST)의 크기·시간 제한이 위 값보다 작으면, 화면은 Global Edge·API는 Load Balancer 주소로 따로 두는 구성(주소 2개)으로 가요. 이때는 백엔드 CORS 설정이 필요하니 백엔드에 화면 주소를 알려 주세요.
-
-**HTTP로 두면 꺼지는 기능** (브라우저가 HTTPS에서만 허용)
-
-| 기능 | HTTP에서 | 대신 |
+| 구성 요소 | 구축 내용 | 역할 |
 |---|---|---|
-| 셀카 화면 안 카메라 | 안 됨 | 갤러리에서 고르기(휴대폰에서 "사진 찍기" 선택 가능) → 매칭은 됨 |
-| 아이폰 사진 앱에 바로 저장(공유 시트) | 안 됨 | 다운로드("파일" 앱에 저장) |
-| 관리자 입장 링크 복사 | 안 됨 | "길게 눌러 복사" 안내, QR 저장은 됨 |
+| VPC·Subnet | `10.0.0.0/16`, Public/Private 분리 | 사용자 진입점과 내부 서버·DB 분리 |
+| Global Edge + Certificate Manager | HTTPS 도메인, 경로별 원본 라우팅 | 주소 하나로 화면·API 제공, 정적 파일 캐시, 카메라 사용(HTTPS 필수) |
+| Application Load Balancer | HTTPS 443 리스너, 상태 확인 `/health` | 정상 API 서버로 요청 분산 |
+| API Auto Scaling | 최소 1 · 최대 3대 | API 1~10, 셀카 매칭, 분류·보관 스케줄러 |
+| 워커 Auto Scaling | 최소 1 · 최대 3대 | 얼굴 검출·벡터 추출 |
+| Cloud DB for PostgreSQL | PostgreSQL 16 + pgvector, Primary/Standby, 자동 백업 7일 | 행사·사진·얼굴·분류 결과, 얼굴 벡터 검색 |
+| NAS | API·워커가 같은 NFS 볼륨 공유 | API가 저장한 사진을 워커가 읽고, 보관 단계에서 API가 다시 읽음 |
+| 사진 Object Storage | 비공개 버킷, 서명 URL, CORS | 공개된 행사의 사진 제공 |
+| 프론트 Object Storage | 정적 JS·CSS | Global Edge의 정적 파일 원본 |
+| Container Registry | API·워커 Docker 이미지 | 모든 서버가 같은 이미지 사용 |
+| Cloud Insight | CPU 이벤트 → Auto Scaling 정책 | 부하에 따라 자동 확장·축소 |
+| ACG·NACL | 경로·포트별 접근 제어 | 관리 접속과 내부 통신 범위 제한 |
 
-관리자 비밀번호·토큰도 암호화 없이 오가요. 데모가 끝나면 관리자 비밀번호를 바꾸고 행사 데이터를 지우는 걸 권해요.
+**설계 이유**
 
-**HTTPS로 올릴 때** (코드 변경 없음): 도메인 → Global DNS 등록 → Certificate Manager에서 **Global Edge 전용 인증서**(무료, Let's Encrypt, 90일, DNS CNAME 검증) → Global Edge에 연결. Global Edge 자동 도메인에서 인증서 없이 HTTPS가 되는지도 콘솔에서 한번 확인해 주세요.
-
----
+- **API와 워커 분리**: 얼굴 추출은 CPU를 많이 써요. 사용자 요청을 받는 API와 나눠서 각각 필요한 만큼 서버 수를 조정해요. 셀카 매칭은 API에서 하므로 매칭 부하는 API Auto Scaling이 받아요.
+- **NAS 공유**: API가 저장한 사진을 워커가 읽고, 보관도 API가 NAS에서 읽어요. 그래서 두 서버에 같은 볼륨을 같은 경로(`/nas`)로 연결해요.
+- **PostgreSQL + pgvector**: 관계형 데이터와 얼굴 벡터를 한 DB에서 관리해요. 별도 큐(Redis 등) 없이 `photos.status`를 작업 대기열로 써요. DB 계정은 API용과 워커용을 나눴어요.
+- **사진 버킷 비공개**: 공개 ACL을 없애고 서명 URL로만 제공해요. 참가자 권한은 애플리케이션이 판단하고, URL 만료로 접근 기간을 제한해요.
 
 ## 3. API 서버·워커 이미지
 
-### 3-1. 빌드 (`backend/`에서)
+### 3-1. 빌드 · 올리기 (`backend/`에서)
 
-같은 Dockerfile에서 target만 달라요. 얼굴 분석 모델(InsightFace buffalo_l 중 검출·벡터 2개)이 **이미지 안에 들어 있어서** 서버가 뜰 때 인터넷에서 받지 않아요.
+같은 Dockerfile에서 target만 달라요. 얼굴 분석 모델이 **이미지 안에 들어 있어서**, 새 서버가 뜰 때 모델을 다시 받지 않아요.
 
 ```bash
-cd backend
 docker build --target api    -t photo-sorter-api:<버전> .
 docker build --target worker -t photo-sorter-worker:<버전> .
-```
 
-- 이미지 크기 약 2GB (onnxruntime·OpenCV·모델 포함). 빌드할 때는 인터넷 필요(파이썬 패키지, 모델 288MB).
-- 서버가 x86_64(amd64)가 아니면 `--platform` 지정이 필요해요.
-
-### 3-2. Container Registry에 올리기
-
-NCP Container Registry = AWS ECR 같은 역할이에요. 레지스트리를 만들면 상세 화면에 엔드포인트가 나와요.
-
-- 공개 엔드포인트: `<레지스트리 이름>.kr.ncr.ntruss.com` (밖에서 push할 때)
-- 프라이빗 엔드포인트: `<무작위>.kr.private-ncr.ntruss.com` (VPC 안 서버에서 pull할 때)
-- 로그인: 아이디 = API 인증키 **Access Key ID**, 비밀번호 = **Secret Key**
-
-```bash
 REGISTRY=<레지스트리 이름>.kr.ncr.ntruss.com
 docker login $REGISTRY                                   # Access Key ID / Secret Key
 docker tag photo-sorter-api:<버전>    $REGISTRY/photo-sorter-api:<버전>
@@ -91,85 +71,74 @@ docker push $REGISTRY/photo-sorter-api:<버전>
 docker push $REGISTRY/photo-sorter-worker:<버전>
 ```
 
-### 3-3. 서버에서 실행
+- 이미지 크기 약 2GB (onnxruntime·OpenCV·모델 포함)
+- 서버는 VPC 안에서 프라이빗 엔드포인트(`<무작위>.kr.private-ncr.ntruss.com`)로 pull
 
-공통 준비 (Auto scaling 서버 이미지 또는 시작 스크립트에 넣어 주세요)
-
-1. Docker 설치, Container Registry 로그인(프라이빗 엔드포인트)
-2. NAS를 NFS로 마운트: 예) `/mnt/nas` — **API 서버와 워커 모두 같은 NAS**
-3. NAS 폴더 권한: 컨테이너는 uid **10001** 계정으로 실행돼요. NAS 폴더를 이 uid가 쓸 수 있게 하거나, `docker run --user <NAS 소유 uid>:<gid>`로 맞춰 주세요.
-4. 설정 파일 `/etc/photo-sorter/env` (아래 3-4)
+### 3-2. 서버에서 실행
 
 ```bash
-# API 서버 (Load Balancer 대상 포트 8000)
+# API 서버: Nginx(80)가 127.0.0.1:8000으로 넘김
 docker run -d --name photo-sorter-api --restart unless-stopped \
   --env-file /etc/photo-sorter/env \
-  -v /mnt/nas:/nas \
-  -p 8000:8000 \
+  -v /mnt/nas/photo-sorter:/nas \
+  -p 127.0.0.1:8000:8000 \
   $REGISTRY/photo-sorter-api:<버전>
 
-# 워커 (포트 없음, 서버당 1개. 더 필요하면 서버를 늘림)
+# 워커: 포트 없음, 서버당 1개
 docker run -d --name photo-sorter-worker --restart unless-stopped \
   --env-file /etc/photo-sorter/env \
-  -v /mnt/nas:/nas \
+  -v /mnt/nas/photo-sorter:/nas \
   $REGISTRY/photo-sorter-worker:<버전>
 ```
 
-- 워커는 `docker stop`(SIGTERM)을 받으면 **지금 사진만 끝내고** 멈춰요(1~2초). 중간에 죽어도 5분 뒤 API 서버가 그 사진을 대기열로 되돌려요.
-- API 서버를 여러 대 띄워도 분류·보관은 행사마다 한 서버만 해요(DB 잠금).
-- 로그는 `docker logs <이름>`. Cloud Insight로 모을 때도 컨테이너 표준 출력이에요.
-- 서버 크기: 얼굴 분석이 CPU를 써요(로컬 기준 사진 1장 약 1초). 워커 컨테이너는 모델을 올린 직후 메모리 약 600MB(로컬 측정), 사진을 처리할 때 사진 크기만큼 더 써요. API 서버도 셀카 매칭 때문에 첫 매칭 요청 때 같은 모델을 올려요.
+- NAS는 호스트 `/mnt/nas`에 마운트하고, 공유 폴더 `/mnt/nas/photo-sorter`를 컨테이너의 `/nas`로 연결해요. 컨테이너는 uid **10001**로 실행되므로 이 uid가 폴더에 쓸 수 있어야 해요.
+- 워커 ID는 `호스트 이름-프로세스 번호`예요. 서버마다 달라야 해서 인스턴스 번호를 반영해 지정해요.
+- 워커는 `docker stop`을 받으면 지금 처리 중인 사진만 끝내고 멈춰요. 갑자기 죽어도 5분 뒤 API 서버가 그 사진을 대기열로 되돌려요.
+- API 서버가 여러 대여도 분류·보관은 행사마다 한 서버만 해요 (DB 잠금).
 
-### 3-4. 설정 파일 (`/etc/photo-sorter/env`)
+### 3-3. 설정 파일 (`/etc/photo-sorter/env`)
 
-이미지에는 비밀값이 없어요. API 서버·워커가 같은 파일을 써도 돼요. **채팅·저장소에 올리지 마세요.**
+이미지에는 비밀값이 없고, 서버의 이 파일로만 넣어요.
 
-| 키 | 운영 값 | 설명 |
-|---|---|---|
-| `POSTGRES_HOST` | Cloud DB 사설 도메인 | |
-| `POSTGRES_PORT` | `5432` | |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Cloud DB 값 | |
-| `NAS_ROOT_PATH` | **`/nas`** | 컨테이너 안 경로. 로컬 `.env`의 `./nas`를 그대로 쓰면 업로드가 권한 오류로 실패해요 |
-| `JWT_SECRET_KEY` | **32바이트 이상 무작위** | 예: `openssl rand -hex 32`. 서버끼리 같아야 해요 |
-| `ADMIN_LOGIN_ID` / `ADMIN_PASSWORD` | 관리자 계정 | 데모용 1개 |
-| `ACCESS_TOKEN_EXPIRATION_SECONDS` | `43200` (기본) | 12시간 |
-| `OBJECT_STORAGE_ENDPOINT` | `https://kr.object.ncloudstorage.com` | |
-| `OBJECT_STORAGE_REGION` | `kr-standard` | |
-| `OBJECT_STORAGE_BUCKET` | 사진 버킷 (비공개) | 화면 버킷과 따로 |
-| `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` | API 인증키 | 사진 버킷 읽기·쓰기 |
-| `PRESIGNED_URL_EXPIRATION_SECONDS` | `3600` (기본) | 사진 URL 만료 |
-| `CLUSTERING_SCHEDULER_ENABLED` | `true` (기본) | API 서버의 분류 스케줄러. 워커에는 영향 없음 |
+| 키 | 값 |
+|---|---|
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Cloud DB 사설 도메인, `5432`, 계정 |
+| `NAS_ROOT_PATH` | `/nas` (컨테이너 안 경로) |
+| `JWT_SECRET_KEY` | 32바이트 이상 무작위 값, API 서버끼리 같아야 함 |
+| `ADMIN_LOGIN_ID` / `ADMIN_PASSWORD` | 관리자 계정 |
+| `OBJECT_STORAGE_ENDPOINT` / `OBJECT_STORAGE_REGION` | `https://kr.object.ncloudstorage.com` / `kr-standard` |
+| `OBJECT_STORAGE_BUCKET` / `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` | 사진 버킷, API 인증키 |
+| `ACCESS_TOKEN_EXPIRATION_SECONDS` | `43200` (12시간, 기본값) |
+| `PRESIGNED_URL_EXPIRATION_SECONDS` | `3600` (기본값) |
+| `CLUSTERING_SCHEDULER_ENABLED` | `true` (기본값) |
 
----
+### 3-4. Auto Scaling으로 새 서버가 생길 때
 
-## 4. DB 준비 (Cloud DB for PostgreSQL)
+1. 서버 이미지로 인스턴스 생성
+2. NAS 접근 제어에 새 서버 등록 → NAS 마운트
+3. API 또는 워커 컨테이너 실행
+4. API 서버는 Target Group 상태 확인(`/health`)을 통과한 뒤 요청을 받음
 
-처음 한 번, Bastion에서 `backend/database/migrations/`의 SQL을 **파일 이름 순서대로** 실행해요.
+`/health`는 애플리케이션이 떠 있는지만 확인해요 (DB가 잠깐 끊겨도 서버가 한꺼번에 빠지지 않게).
+
+## 4. DB 준비
+
+처음 한 번, Bastion에서 `backend/database/migrations/`의 SQL을 파일 이름 순서대로 실행해요.
 
 ```bash
 psql -h <Cloud DB 주소> -U <사용자> -d <DB> -f 001_initial_schema.sql   # 테이블 4개 + pgvector 확장
 psql -h <Cloud DB 주소> -U <사용자> -d <DB> -f 002_unique_photo_file_name.sql
 ```
 
-- `001`의 첫 줄이 `CREATE EXTENSION IF NOT EXISTS vector;`예요. 여기서 실패하면 1절 1번(pgvector 지원) 문제예요.
-- 새 마이그레이션 파일이 생기면 그 파일만 추가로 실행해요.
+## 5. 사진 버킷 CORS
 
----
-
-## 5. Object Storage 버킷
-
-| 버킷 | 공개 | 용도 |
-|---|---|---|
-| 사진 버킷 | **비공개** | 원본 사진 보관. 사용자는 Pre-signed URL(1시간)로만 봄 |
-| 화면 버킷 | 공개 | 프론트 정적 파일 |
-
-**사진 버킷 CORS** — 브라우저 보안 규칙 때문에, 화면 주소에서 JS로 사진 파일을 받으려면 버킷이 "이 화면 주소는 허용"이라고 답해야 해요. `<img>`로 보여 주는 건 CORS 없이도 되지만, **사진 저장·공유 기능은 사진을 JS로 받아서 CORS가 필요**해요.
+`<img>`로 보여 주는 건 CORS가 없어도 되지만, **사진 저장·공유는 브라우저가 JS로 사진을 받기 때문에** 버킷에 화면 주소를 허용해야 해요.
 
 ```json
 {
   "CORSRules": [
     {
-      "AllowedOrigins": ["http://<화면 주소>"],
+      "AllowedOrigins": ["https://findmyphoto.remotewire.net"],
       "AllowedMethods": ["GET", "HEAD"],
       "AllowedHeaders": ["*"],
       "MaxAgeSeconds": 3600
@@ -179,52 +148,61 @@ psql -h <Cloud DB 주소> -U <사용자> -d <DB> -f 002_unique_photo_file_name.s
 ```
 
 ```bash
-# S3 호환 API로 설정 (NCP 콘솔에 메뉴가 없으면). 개발 버킷이면 http://localhost:5173 도 추가
 aws --endpoint-url=https://kr.object.ncloudstorage.com s3api put-bucket-cors \
   --bucket <사진 버킷> --cors-configuration file://cors.json
 ```
 
-(NCP Object Storage의 CORS 설정 방법은 콘솔·가이드에서 한번 확인해 주세요.)
+## 6. 프론트
 
----
+1. `frontend/`에서 `npm ci && npm run build` → `frontend/dist/`
+   - 화면과 API가 같은 도메인이라 `VITE_API_BASE_URL`은 비워 둬요 (같은 주소의 `/api`로 요청).
+2. `index.html`은 API 서버의 Nginx가 제공해요 (SPA 경로도 `index.html`로).
+3. `dist/assets/`는 프론트 Object Storage에 올려 Global Edge가 캐시해요. 파일 이름에 내용 해시가 붙어 있어 오래 캐시해도 돼요.
 
-## 6. 프론트 (빌드 → 화면 버킷 업로드)
+## 7. 자동 확장 정책
 
-준비: Node.js 22 이상. `frontend/`에서.
+| 항목 | 설정 |
+|---|---|
+| 용량 | 최소 1 · 기대 1 · 최대 3대 |
+| 확장 | 평균 CPU 30% 이상 1분 → 1대 추가 (쿨다운 300초) |
+| 축소 | 평균 CPU 10% 이하 5분 → 1대 감소 (쿨다운 600초) |
 
-1. `frontend/.env.production.local` (저장소에 안 올라감)
-   - 2절 구성(주소 1개): `VITE_API_BASE_URL=` 비워 둠 → 같은 주소의 `/api`로 요청
-   - 주소 2개 구성: `VITE_API_BASE_URL=http://<API 주소>` (뒤에 `/api` 붙이지 않음)
-2. 빌드: `npm ci && npm run build` → `frontend/dist/` (약 4MB). API 주소는 빌드할 때 파일에 들어가서, 바뀌면 다시 빌드해야 해요.
-3. 화면 버킷에 올리기 (assets 먼저, `index.html` 마지막)
+자동 확장을 시연·검증하려고 낮게 잡은 값이에요. 실제 운영에서는 응답 시간, 대기 작업 수, 비용을 보고 조정해야 해요.
 
-```bash
-ENDPOINT=https://kr.object.ncloudstorage.com
-BUCKET=<화면 버킷>
-aws --endpoint-url=$ENDPOINT s3 sync frontend/dist/assets s3://$BUCKET/assets \
-  --acl public-read --cache-control "public, max-age=31536000, immutable"
-aws --endpoint-url=$ENDPOINT s3 cp frontend/dist/favicon.svg s3://$BUCKET/favicon.svg \
-  --acl public-read --cache-control "public, max-age=86400"
-aws --endpoint-url=$ENDPOINT s3 cp frontend/dist/index.html s3://$BUCKET/index.html \
-  --acl public-read --cache-control "no-cache" --content-type "text/html; charset=utf-8"
-```
+## 8. 검증 결과
 
-4. Global Edge URL Rewrite (2절): `/`, `/e/*`, `/admin/*`, `/expired` → `/index.html`
-5. 다시 배포할 때: 빌드 → 3번 → Global Edge에서 `/index.html` Purge
+### 기능 통합 테스트 (운영 환경)
 
----
+| 항목 | 결과 |
+|---|---|
+| HTTPS 접속, 정적 파일 | 첫 화면·관리자·행사 페이지 정상, JS·CSS 200 |
+| 관리자 인증 | 로그인 성공, 잘못된 토큰 401 |
+| 업로드 → 추출 → 분류 → 공개 | 6장 업로드(실패 0) → 6장 추출 → 사람 3명 → 공개 |
+| 참가자 조회·다운로드 | 후보 선택 후 사진 조회, 브라우저에서 실제 저장 |
+| 카메라·셀카 매칭 | HTTPS에서 카메라 실행, 후보·사진 확인 |
+| 비공개 사진 | 서명 URL 200, 서명 없는 같은 주소 403 |
+| 공유 NAS | API·워커 양쪽 쓰기·읽기 확인 |
+| 새 워커 | Auto Scaling이 만든 워커에서 사진 처리 확인 |
+| 서버 재시작 | NAS·컨테이너·API 응답 복구 확인 |
 
-## 7. 배포 순서 체크리스트
+### 부하 테스트 (셀카 매칭, k6)
 
-- [ ] 1절 확인 (특히 pgvector)
-- [ ] Cloud DB for PostgreSQL 생성 → 4절 SQL 적용
-- [ ] NAS 생성 → API·워커 서버 모두 마운트, uid 10001 권한
-- [ ] 사진 버킷(비공개, CORS) / 화면 버킷(공개)
-- [ ] Container Registry 생성 → 3-1·3-2 이미지 push
-- [ ] API 서버·워커 서버 Auto scaling: 시작 스크립트(Docker, 레지스트리 로그인, NAS 마운트, env 파일, `docker run`)
-- [ ] Load Balancer → API 서버 8000, 상태 확인 `/health`, 요청 크기·대기 시간
-- [ ] Global Edge: 화면 버킷 + `/api/*` → Load Balancer, URL Rewrite
-- [ ] 프론트 빌드·업로드 (6절)
-- [ ] 확인: 관리자 로그인 → 행사 생성 → 사진 업로드 → 업로드 완료 → `open` → 참가자 입장 → 사람 폴더·셀카 매칭
+| 조건 | 결과 |
+|---|---|
+| 약 9분, 최대 4 동시 사용자, 785KB 셀카, 반복마다 1초 대기 | 요청 568건, **실패 0건** |
+| 응답 시간 | 평균 795ms, 중앙값 731ms, p95 1.12초, 최대 5.7초 |
+| 자동 확장 | CPU 이벤트로 API 서버가 실제로 늘었다가 줄어드는 것 확인 |
 
-로컬에서 같은 이미지로 이 흐름 전체를 확인했어요 (2026-10-27, Gallagher 8장: 업로드 → 추출 → 분류 6명 → 보관 → 입장·조회·셀카 매칭).
+통과 기준(실패율 10% 미만, p95 10초 미만, 검증 성공률 99% 초과)을 모두 만족했어요.
+4명 결과를 수천 명 동시 접속 처리 능력으로 해석하지는 않아요. 최대 처리량·장시간 안정성은 따로 측정해야 해요.
+
+## 9. 남은 운영 과제
+
+| 항목 | 상태 |
+|---|---|
+| DB 장애 전환 | HA 구성 완료, 강제 전환 시험은 미수행 |
+| 백업 복구 | 7일 자동 백업, 실제 복원 시험은 미수행 |
+| 최대 용량·장시간 시험 | 추가 측정 필요 |
+| 운영 알림 | CPU 확장 이벤트만 구성, 장애·용량 알림 추가 필요 |
+| 인증서 갱신 | 자동 갱신이 꺼져 있어 만료(2027-05-09) 전 수동 갱신 필요 |
+| 배포 변경 반영 | 설정·이미지가 바뀌면 서버 이미지와 Launch Configuration에도 반영 |

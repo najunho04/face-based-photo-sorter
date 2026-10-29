@@ -20,7 +20,7 @@ npm run dev
 
 ## 환경 변수
 
-아무것도 설정하지 않으면 `npm run dev`는 가짜 API(MSW)로 동작합니다. 팀 규칙상 저장소에는 `.env.example`만 올리고,
+아무것도 설정하지 않으면 `npm run dev`는 가짜 API(MSW)로 동작합니다. 저장소에는 `.env.example`만 올리고,
 실제 백엔드에 붙일 때는 `.env.example`을 `.env.development.local`로 복사해서 씁니다(저장소 제외).
 
 | 이름                | 설명                                                                                |

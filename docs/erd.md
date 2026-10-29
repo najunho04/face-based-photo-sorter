@@ -1,6 +1,6 @@
 # ERD / DB 스키마
 
-> 출처: Notion [백엔드 흐름](https://app.notion.com/p/3fb0ea4df78580f68c86d8936c86967c) (2026-10-26 동기화). 원본이 바뀌면 이 문서도 갱신.
+> DB 테이블 구조, 사진 처리 대기열 규칙, 사람 분류 규칙.
 
 DB는 **PostgreSQL + pgvector**. 별도 큐 리소스 없이 `photos.status`를 작업 큐로 쓴다.
 
@@ -49,7 +49,7 @@ CREATE TABLE photos (
   status      VARCHAR(20) NOT NULL DEFAULT 'uploaded',
   worker_id   VARCHAR(50),                    -- 작업을 잡은 워커
   claimed_at  TIMESTAMP,                      -- 작업을 잡은 시각 (5분 초과 시 복구)
-  UNIQUE (event_id, file_name)                -- 같은 이름 = 같은 사진, 재업로드는 NAS만 덮어씀 (migrations/002, 2026-10-27)
+  UNIQUE (event_id, file_name)                -- 같은 이름 = 같은 사진, 재업로드는 NAS만 덮어씀 (migrations/002)
 );
 
 CREATE TABLE persons (
@@ -92,8 +92,6 @@ CREATE INDEX idx_faces_photo   ON faces(photo_id);            -- 사진별 얼�
 5. **영구 오류**(파일 없음·손상): `status='failed'`, `worker_id`는 추적용으로 남김. 관리자 화면 실패 목록에 노출.
 
 ## 분류 규칙 (persons)
-
-> 구현하면서 정한 규칙 (2026-10-25). Notion "구현 반영 (2026-10-25)"에도 반영.
 
 웹서버(API 서버)의 백그라운드 스케줄러가 5초마다 반복한다 (`backend/clustering/scheduler.py`).
 
