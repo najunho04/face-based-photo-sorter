@@ -3,6 +3,7 @@
 새 도메인 라우터는 create_application()의 include_router 목록에 추가.
 """
 
+import logging
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,7 +17,11 @@ import matching.router
 from clustering.scheduler import ClusteringScheduler
 from core.configuration import get_settings
 from core.object_storage import get_object_storage
-from core.responses import register_exception_handlers
+from core.responses import register_exception_handlers, success_response
+
+
+# uvicorn은 자기 로그만 설정함 → 분류 스케줄러·보관 등 앱 로그(INFO)도 서버 로그(컨테이너 로그)에 찍히게
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 @asynccontextmanager
@@ -47,6 +52,12 @@ def create_application() -> FastAPI:
     application.include_router(event.router.router)            # API 2~5 행사 생성·업로드·완료·진행 상황
     application.include_router(matching.router.router)         # API 8 셀카 매칭
     application.include_router(gallery.router.router)          # API 7·9·10 전체 사진, 사람 폴더 목록·사진
+
+    @application.get("/health", include_in_schema=False)
+    def health_check():
+        # 로드밸런서 상태 확인용 (명세 밖). DB는 보지 않음: DB가 잠깐 끊겨도 모든 서버가 한꺼번에 빠지지 않게
+        return success_response({"status": "ok"})
+
     return application
 
 

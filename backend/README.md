@@ -14,7 +14,7 @@ FastAPI + PostgreSQL(pgvector) + InsightFace. 프론트 개발에 필요한 것�
 
 워커를 안 띄우면 행사가 `extracting`에서 멈춰요. API 서버도 셀카 매칭(API 8) 때문에 얼굴 분석 모델을 씀 (첫 요청 때 몇 초 로드, 모델 파일은 첫 실행 때 자동 다운로드).
 
-배포에서는 API 서버와 워커를 따로 띄우는 구성이에요 (늘리는 기준이 다름: 워커는 사진 양, API는 접속자 수). 둘 다 같은 DB와 같은 NAS를 봐야 해요.
+배포는 Docker 이미지(`backend/Dockerfile`, target `api`·`worker`)로 해요. 순서·설정값은 [docs/deployment.md](../docs/deployment.md). 배포에서는 API 서버와 워커를 따로 띄우는 구성이에요 (늘리는 기준이 다름: 워커는 사진 양, API는 접속자 수). 둘 다 같은 DB와 같은 NAS를 봐야 해요.
 
 ## 로컬에서 처음 띄우기
 

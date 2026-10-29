@@ -36,5 +36,6 @@ uv run python -m extraction.worker            # 워커 (얼굴 추출)
 ## 문서
 
 - [backend/README.md](backend/README.md) — 백엔드 실행 구성·프론트 연동 메모
+- [docs/deployment.md](docs/deployment.md) — 배포 가이드 (인프라 전달용: 이미지, 서버 설정, DB·버킷·프론트 배포)
 - [docs/api.md](docs/api.md) — API 명세·에러코드
 - [docs/erd.md](docs/erd.md) — DB 스키마·워커 큐 규칙·분류 규칙

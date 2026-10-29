@@ -90,3 +90,11 @@ def test_application_does_not_start_scheduler_when_disabled(monkeypatch):
     with TestClient(create_application()):
         pass
     assert FakeScheduler.instances == []
+
+
+def test_health_check_answers_without_database():
+    # 로드밸런서 상태 확인용. DB가 잠깐 끊겨도 서버 전체가 빠지지 않게 DB는 보지 않음 (DB 불필요)
+    response = TestClient(create_application()).get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "data": {"status": "ok"}, "error": None}
