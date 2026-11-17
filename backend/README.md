@@ -117,7 +117,7 @@ OBJECT_STORAGE_SECRET_KEY=<Secret Key>
 
 키가 없으면 분류 후 보관 단계에서 멈춰요 (행사가 `clustering`에 머묾). 사진 저장·공유는 브라우저가 JS로 사진을 받기 때문에 버킷 CORS에 화면 주소(`http://localhost:5173` 등) GET·HEAD 허용이 필요해요.
 
-### 키 없이 띄우기 (가짜 S3, moto)
+### 테스트 시, 키 없이 띄우기 (가짜 S3, moto)
 
 NCP 키 대신 메모리 S3 서버(moto)를 쓸 수 있어요. CORS를 기본으로 허용해서 사진 저장·공유도 동작해요.
 
